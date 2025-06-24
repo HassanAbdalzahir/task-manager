@@ -66,7 +66,7 @@ export class App {
     // Swagger UI
     this.app.use(
       "/api-docs",
-      swaggerUi.serve,
+      ...(swaggerUi.serve as any),
       swaggerUi.setup(specs, {
         customCss: ".swagger-ui .topbar { display: none }",
         customSiteTitle: "Task Manager API Documentation",
@@ -78,7 +78,7 @@ export class App {
           showExtensions: true,
           showCommonExtensions: true,
         },
-      })
+      }) as any
     );
 
     // API routes
