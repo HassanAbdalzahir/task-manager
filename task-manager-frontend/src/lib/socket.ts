@@ -8,25 +8,24 @@ export const initializeSocket = (token: string): Socket => {
     socket.disconnect();
   }
 
-  socket = io(process.env.NEXT_PUBLIC_SOCKET_SERVER!, {
-    path: process.env.NEXT_PUBLIC_SOCKET_PATH,
+  const socketServer =
+    process.env.NEXT_PUBLIC_SOCKET_SERVER || "http://localhost:3100";
+  const socketPath = process.env.NEXT_PUBLIC_SOCKET_PATH || "/socket.io";
+
+  socket = io(socketServer, {
+    path: socketPath,
     auth: {
-      token,
+      token: `Bearer ${token}`,
     },
     autoConnect: true,
+    transports: ["websocket", "polling"],
   });
 
-  socket.on("connect", () => {
-    console.log("Connected to Socket.io server");
-  });
+  socket.on("connect", () => {});
 
-  socket.on("disconnect", () => {
-    console.log("Disconnected from Socket.io server");
-  });
+  socket.on("disconnect", () => {});
 
-  socket.on("connect_error", (error) => {
-    console.error("Socket connection error:", error);
-  });
+  socket.on("connect_error", () => {});
 
   // Task-related events
   socket.on("task:assigned", (data) => {
@@ -34,7 +33,7 @@ export const initializeSocket = (token: string): Socket => {
     addNotification({
       type: "info",
       title: "New Task Assigned",
-      message: `You have been assigned: "${data.task.title}"`,
+      message: `You have been assigned: "${data.data.title}"`,
       duration: 6000,
     });
   });
@@ -44,7 +43,7 @@ export const initializeSocket = (token: string): Socket => {
     addNotification({
       type: "success",
       title: "Task Updated",
-      message: `Task "${data.task.title}" status changed to ${data.task.status}`,
+      message: `Task "${data.data.title}" status changed to ${data.data.status}`,
       duration: 4000,
     });
   });
@@ -54,18 +53,18 @@ export const initializeSocket = (token: string): Socket => {
     addNotification({
       type: "success",
       title: "Task Completed",
-      message: `Task "${data.task.title}" has been completed!`,
+      message: `Task "${data.data.title}" has been completed!`,
       duration: 5000,
     });
   });
 
   socket.on("task:deadline", (data) => {
     const { addNotification } = useNotificationStore.getState();
-    const isOverdue = new Date(data.task.deadline) < new Date();
+    const isOverdue = new Date(data.data.deadline) < new Date();
     addNotification({
       type: isOverdue ? "error" : "warning",
       title: isOverdue ? "Task Overdue" : "Deadline Approaching",
-      message: `Task "${data.task.title}" ${
+      message: `Task "${data.data.title}" ${
         isOverdue ? "is overdue" : "deadline is approaching"
       }`,
       duration: 8000,
@@ -77,7 +76,7 @@ export const initializeSocket = (token: string): Socket => {
     addNotification({
       type: "info",
       title: "New Comment",
-      message: `New comment on task "${data.task.title}"`,
+      message: `New comment on task "${data.data.title}"`,
       duration: 4000,
     });
   });

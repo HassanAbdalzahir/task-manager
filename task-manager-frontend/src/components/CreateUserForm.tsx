@@ -57,8 +57,7 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
         ];
       }
       setAvailableManagers(managers);
-    } catch (err) {
-      console.error("Failed to fetch managers:", err);
+    } catch {
       setAvailableManagers([]);
     }
   }, [user]);

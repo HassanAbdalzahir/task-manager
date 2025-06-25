@@ -7,9 +7,10 @@ import { User } from "@/types/user";
 import { Search, Users as UsersIcon, Building } from "lucide-react";
 import axios from "@/lib/axios";
 import UserList from "@/components/UserList";
+import { initializeSocket } from "@/lib/socket";
 
 export default function UsersPage() {
-  const { isAuthenticated, workspace } = useAuthStore();
+  const { isAuthenticated, workspace, user } = useAuthStore();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -50,6 +51,19 @@ export default function UsersPage() {
       return;
     }
 
+    // Initialize socket connection for real-time updates
+    if (user) {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        const socket = initializeSocket(token);
+
+        // Listen for socket events to refresh users (when new users are created)
+        socket.on("user:created", () => {
+          fetchUsers();
+        });
+      }
+    }
+
     fetchUsers();
   }, [isAuthenticated, router]);
 
@@ -60,15 +74,29 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get("/users");
-      // Handle the correct response structure from getAllUsers
-      const usersData = response.data.data?.users || [];
-      const fetchedUsers = Array.isArray(usersData) ? usersData : [];
-      setUsers(fetchedUsers);
-    } catch (err: unknown) {
+
+      // Use different endpoints based on user role
+      let response;
+      if (user?.role === "CEO") {
+        // CEOs can see all users in their workspace
+        response = await axios.get("/users");
+        const usersData = response.data.data?.users || [];
+        const fetchedUsers = Array.isArray(usersData) ? usersData : [];
+        setUsers(fetchedUsers);
+      } else if (user?.role === "Manager") {
+        // Managers can only see their subordinates
+        response = await axios.get("/users/subordinates");
+        const usersData = response.data.data?.subordinates || [];
+        const fetchedUsers = Array.isArray(usersData) ? usersData : [];
+        setUsers(fetchedUsers);
+      } else {
+        // Employees cannot access user management
+        setUsers([]);
+        setError("Access denied. Only managers can view users.");
+      }
+    } catch {
       setError("Failed to load users");
       setUsers([]); // Set empty array on error
-      console.error("Users error:", err);
     } finally {
       setIsLoading(false);
     }

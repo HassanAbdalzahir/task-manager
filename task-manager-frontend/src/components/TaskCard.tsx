@@ -13,13 +13,13 @@ export default function TaskCard({ task }: TaskCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "text-green-600 dark:text-green-400";
+        return "text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 px-2 py-1 rounded";
       case "in_progress":
-        return "text-blue-600 dark:text-blue-400";
+        return "text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 px-2 py-1 rounded";
       case "pending":
-        return "text-yellow-600 dark:text-yellow-400";
+        return "text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 px-2 py-1 rounded";
       default:
-        return "text-gray-600 dark:text-gray-400";
+        return "text-gray-700 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/20 px-2 py-1 rounded";
     }
   };
 
@@ -38,7 +38,7 @@ export default function TaskCard({ task }: TaskCardProps) {
 
   const getPriorityColor = (deadline?: string) => {
     if (!deadline)
-      return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200";
+      return "bg-gray-400 dark:bg-gray-700 text-white dark:text-gray-200 border border-gray-500 dark:border-gray-600";
 
     const deadlineDate = new Date(deadline);
     const now = new Date();
@@ -46,12 +46,12 @@ export default function TaskCard({ task }: TaskCardProps) {
       (deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     if (deadlineDate < now)
-      return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200";
+      return "bg-red-200 dark:bg-red-900/20 text-red-900 dark:text-red-200 border border-red-300 dark:border-red-800";
     if (diffInHours <= 24)
-      return "bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200";
+      return "bg-red-500 dark:bg-orange-900/40 text-white dark:text-orange-200 border border-red-600 dark:border-orange-800";
     if (diffInHours <= 72)
-      return "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200";
-    return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200";
+      return "bg-yellow-200 dark:bg-yellow-900/20 text-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-800";
+    return "bg-green-200 dark:bg-green-900/20 text-green-900 dark:text-green-200 border border-green-300 dark:border-green-800";
   };
 
   const getPriorityText = (deadline?: string) => {

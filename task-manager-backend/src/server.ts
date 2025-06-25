@@ -4,6 +4,7 @@ import { setupSocketIO } from "./config/socket";
 import { setupTaskSockets } from "./sockets/task.socket";
 import App from "./app";
 import logger from "./utils/logger";
+import { taskService } from "./services/task.service";
 
 class Server {
   private app: App;
@@ -23,6 +24,9 @@ class Server {
 
       // Setup Socket.io handlers
       setupTaskSockets(this.io);
+
+      // Pass IO instance to task service for notifications
+      taskService.setIO(this.io);
 
       // Start server
       this.server.listen(env.PORT, () => {

@@ -367,6 +367,54 @@ export class UserController {
       });
     }
   );
+
+  changePassword = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      const user = req.user as IUser;
+      const { currentPassword, newPassword } = req.body;
+
+      // Validate required fields
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: "Current password and new password are required",
+        });
+        return;
+      }
+
+      // Validate new password length
+      if (newPassword.length < 6) {
+        res.status(400).json({
+          success: false,
+          message: "New password must be at least 6 characters long",
+        });
+        return;
+      }
+
+      const updatedUser = await userService.changePassword(
+        user._id.toString(),
+        currentPassword,
+        newPassword,
+        user.workspaceId.toString()
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Password changed successfully",
+        data: {
+          user: updatedUser,
+        },
+      });
+    }
+  );
 }
 
 export const userController = new UserController();

@@ -22,6 +22,7 @@ export interface User {
         role: string;
       };
   workspaceId: string;
+  requiresPasswordChange: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,4 +57,9 @@ export interface CreateUserRequest {
   password: string;
   role: "CEO" | "Manager" | "Employee";
   managerId?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }

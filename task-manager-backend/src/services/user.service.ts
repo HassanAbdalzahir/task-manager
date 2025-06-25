@@ -1,6 +1,7 @@
 import { User, IUser } from "../models/user.model";
 import { createError } from "../middleware/errorHandler";
 import logger from "../utils/logger";
+import { notifyUserCreated } from "../sockets/task.socket";
 
 export interface UserHierarchy {
   user: IUser;
@@ -202,8 +203,13 @@ export class UserService {
       const user = new User({
         ...userData,
         workspaceId,
+        requiresPasswordChange: true,
       });
       await user.save();
+
+      // Send socket notification for user creation
+      // Note: We need to get the IO instance from the server
+      // For now, we'll add this functionality later if needed
 
       logger.info(`Created user: ${user.email} in workspace: ${workspaceId}`);
       return user;
@@ -392,6 +398,45 @@ export class UserService {
       return managers;
     } catch (error) {
       console.error(`🔍 Error in getAvailableManagers:`, error);
+      throw error;
+    }
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    workspaceId: string
+  ): Promise<IUser> {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        throw createError("User not found", 404);
+      }
+
+      if (user.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await user.comparePassword(
+        currentPassword
+      );
+      if (!isCurrentPasswordValid) {
+        throw createError("Current password is incorrect", 400);
+      }
+
+      // Update password and set requiresPasswordChange to false
+      user.password = newPassword;
+      user.requiresPasswordChange = false;
+      await user.save();
+
+      logger.info(
+        `Password changed for user: ${userId} in workspace: ${workspaceId}`
+      );
+      return user;
+    } catch (error) {
+      logger.error("Error changing password:", error);
       throw error;
     }
   }

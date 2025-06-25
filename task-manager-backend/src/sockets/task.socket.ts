@@ -112,6 +112,32 @@ export const notifyTaskDeadline = (
   }
 };
 
+// User created notification
+export const notifyUserCreated = (
+  io: Server,
+  user: any,
+  workspaceId: string
+): void => {
+  try {
+    // Send to all users in the workspace
+    io.to(workspaceId).emit("user:created", {
+      type: "user:created",
+      data: {
+        userId: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        workspaceId: user.workspaceId,
+      },
+      message: `New user created: ${user.name}`,
+    });
+
+    logger.info(`User created notification sent to workspace: ${workspaceId}`);
+  } catch (error) {
+    logger.error("Error sending user created notification:", error);
+  }
+};
+
 export const setupTaskSockets = (io: Server): void => {
   // This function can be used to set up any additional socket event listeners
   // For now, we're exporting individual notification functions

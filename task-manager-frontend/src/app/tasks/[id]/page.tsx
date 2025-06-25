@@ -42,9 +42,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       setIsLoading(true);
       const response = await axios.get(`/tasks/${taskId}`);
       setTask(response.data.data.task);
-    } catch (err: unknown) {
+    } catch {
       setError("Failed to load task details");
-      console.error("Task detail error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -141,13 +140,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-200 dark:bg-yellow-900/20 text-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-800";
       case "in_progress":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-200 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-800";
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-200 dark:bg-green-900/20 text-green-900 dark:text-green-200 border border-green-300 dark:border-green-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600";
     }
   };
 

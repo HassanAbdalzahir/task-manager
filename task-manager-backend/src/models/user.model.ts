@@ -8,6 +8,7 @@ export interface IUser extends Document {
   role: "CEO" | "Manager" | "Employee";
   managerId?: mongoose.Types.ObjectId;
   workspaceId: mongoose.Types.ObjectId;
+  requiresPasswordChange: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -54,6 +55,10 @@ const userSchema = new Schema<IUser>(
       type: Schema.Types.ObjectId,
       ref: "Workspace",
       required: [true, "Workspace ID is required"],
+    },
+    requiresPasswordChange: {
+      type: Boolean,
+      default: false,
     },
   },
   {

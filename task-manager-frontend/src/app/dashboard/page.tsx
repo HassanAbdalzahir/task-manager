@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useNotificationStore } from "@/store/notificationStore";
+import { initializeSocket } from "@/lib/socket";
 import { Task } from "@/types/task";
 import { User } from "@/types/user";
 import {
@@ -19,8 +21,7 @@ import TaskCard from "@/components/TaskCard";
 import UserList from "@/components/UserList";
 import AssignTaskForm from "@/components/AssignTaskForm";
 import CreateUserForm from "@/components/CreateUserForm";
-import { initializeSocket } from "@/lib/socket";
-import { useNotificationStore } from "@/store/notificationStore";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 
 interface DashboardStats {
   totalTasks: number;
@@ -176,9 +177,26 @@ export default function DashboardPage() {
     // Initialize socket connection for real-time notifications
     if (user) {
       // Get token from localStorage or auth store
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       if (token) {
-        initializeSocket(token);
+        const socket = initializeSocket(token);
+
+        // Listen for socket events to refresh data
+        socket.on("task:assigned", () => {
+          fetchDashboardData();
+        });
+
+        socket.on("task:updated", () => {
+          fetchDashboardData();
+        });
+
+        socket.on("task:completed", () => {
+          fetchDashboardData();
+        });
+
+        socket.on("task:comment", () => {
+          fetchDashboardData();
+        });
       }
     }
 
@@ -197,6 +215,21 @@ export default function DashboardPage() {
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  // Show password change form if required
+  if (user?.requiresPasswordChange) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <ChangePasswordForm
+          isRequired={true}
+          onSuccess={() => {
+            // Password changed successfully, user will be updated in store
+            // and requiresPasswordChange will be false
+          }}
+        />
+      </div>
+    );
   }
 
   if (isLoading) {

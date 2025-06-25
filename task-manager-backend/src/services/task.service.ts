@@ -3,6 +3,12 @@ import { User, IUser } from "../models/user.model";
 import { createError } from "../middleware/errorHandler";
 import logger from "../utils/logger";
 import mongoose from "mongoose";
+import {
+  notifyTaskAssigned,
+  notifyTaskUpdated,
+  notifyTaskCompleted,
+  notifyTaskDeadline,
+} from "../sockets/task.socket";
 
 export interface CreateTaskData {
   title: string;
@@ -24,6 +30,16 @@ export interface AddCommentData {
 }
 
 export class TaskService {
+  private io: any;
+
+  constructor(io?: any) {
+    this.io = io;
+  }
+
+  setIO(io: any) {
+    this.io = io;
+  }
+
   async createTask(
     data: CreateTaskData,
     createdBy: string,
@@ -58,6 +74,11 @@ export class TaskService {
         });
 
         await task.save();
+
+        // Send socket notification for task assignment
+        if (this.io) {
+          notifyTaskAssigned(this.io, task, data.assignedTo);
+        }
 
         logger.info(
           `Task created: ${task.title} by ${createdBy} for ${data.assignedTo} in workspace: ${workspaceId}`
@@ -96,6 +117,11 @@ export class TaskService {
 
       await task.save();
 
+      // Send socket notification for task assignment
+      if (this.io) {
+        notifyTaskAssigned(this.io, task, data.assignedTo);
+      }
+
       logger.info(
         `Task created: ${task.title} by ${createdBy} for ${data.assignedTo} in workspace: ${workspaceId}`
       );
@@ -122,6 +148,7 @@ export class TaskService {
       })
         .populate("createdBy", "name email role")
         .populate("assignedTo", "name email role")
+        .populate("comments.createdBy", "name email")
         .sort({ createdAt: -1 });
 
       logger.info(
@@ -146,6 +173,7 @@ export class TaskService {
       })
         .populate("createdBy", "name email role")
         .populate("assignedTo", "name email role")
+        .populate("comments.createdBy", "name email")
         .sort({ createdAt: -1 });
 
       logger.info(
@@ -180,6 +208,7 @@ export class TaskService {
       })
         .populate("createdBy", "name email role")
         .populate("assignedTo", "name email role")
+        .populate("comments.createdBy", "name email")
         .sort({ createdAt: -1 });
 
       logger.info(
@@ -200,7 +229,8 @@ export class TaskService {
     try {
       const task = await Task.findById(taskId)
         .populate("createdBy", "name email role")
-        .populate("assignedTo", "name email role");
+        .populate("assignedTo", "name email role")
+        .populate("comments.createdBy", "name email");
 
       if (!task) {
         throw createError("Task not found", 404);
@@ -295,6 +325,17 @@ export class TaskService {
 
       task.status = status as "pending" | "in_progress" | "completed";
       await task.save();
+
+      // Send socket notifications for task status update
+      if (this.io) {
+        const userIds = [task.assignedTo.toString(), task.createdBy.toString()];
+        notifyTaskUpdated(this.io, task, userIds);
+
+        // Send completion notification if task is completed
+        if (status === "completed") {
+          notifyTaskCompleted(this.io, task, task.createdBy.toString());
+        }
+      }
 
       logger.info(`Task status updated: ${taskId} to ${status} by ${userId}`);
       return task;
@@ -436,9 +477,17 @@ export class TaskService {
       task.comments.push(comment);
       await task.save();
 
+      // Send socket notification for new comment
+      if (this.io) {
+        const userIds = [task.assignedTo.toString(), task.createdBy.toString()];
+        // We'll use task:updated for comment notifications since we don't have a specific comment event
+        notifyTaskUpdated(this.io, task, userIds);
+      }
+
       const populatedTask = await Task.findById(taskId)
         .populate("createdBy", "name email role")
-        .populate("assignedTo", "name email role");
+        .populate("assignedTo", "name email role")
+        .populate("comments.createdBy", "name email");
 
       logger.info(`Comment added to task: ${taskId} by ${userId}`);
       return populatedTask!;
@@ -552,6 +601,7 @@ export class TaskService {
         tasks = await Task.find({ status, workspaceId })
           .populate("createdBy", "name email role")
           .populate("assignedTo", "name email role")
+          .populate("comments.createdBy", "name email")
           .sort({ createdAt: -1 });
       } else {
         // Others can only see tasks they're involved with
@@ -562,6 +612,7 @@ export class TaskService {
         })
           .populate("createdBy", "name email role")
           .populate("assignedTo", "name email role")
+          .populate("comments.createdBy", "name email")
           .sort({ createdAt: -1 });
       }
 
@@ -599,6 +650,7 @@ export class TaskService {
         })
           .populate("createdBy", "name email role")
           .populate("assignedTo", "name email role")
+          .populate("comments.createdBy", "name email")
           .sort({ deadline: 1 });
       } else {
         // Others can only see overdue tasks they're involved with
@@ -610,6 +662,7 @@ export class TaskService {
         })
           .populate("createdBy", "name email role")
           .populate("assignedTo", "name email role")
+          .populate("comments.createdBy", "name email")
           .sort({ deadline: 1 });
       }
 

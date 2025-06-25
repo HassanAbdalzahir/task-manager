@@ -8,6 +8,7 @@ import { Plus, Filter, Search, RefreshCw } from "lucide-react";
 import axios from "@/lib/axios";
 import TaskCard from "@/components/TaskCard";
 import { useNotificationStore } from "@/store/notificationStore";
+import { initializeSocket } from "@/lib/socket";
 
 type TaskFilter = "all" | "assigned" | "created" | "subordinates";
 type TaskStatus = "all" | "pending" | "in_progress" | "completed";
@@ -74,6 +75,31 @@ export default function TasksPage() {
     if (!isAuthenticated) {
       router.push("/login");
       return;
+    }
+
+    // Initialize socket connection for real-time updates
+    if (user) {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        const socket = initializeSocket(token);
+
+        // Listen for socket events to refresh tasks
+        socket.on("task:assigned", () => {
+          fetchTasks();
+        });
+
+        socket.on("task:updated", () => {
+          fetchTasks();
+        });
+
+        socket.on("task:completed", () => {
+          fetchTasks();
+        });
+
+        socket.on("task:comment", () => {
+          fetchTasks();
+        });
+      }
     }
 
     fetchTasks();

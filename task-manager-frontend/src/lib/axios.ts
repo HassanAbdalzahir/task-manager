@@ -1,7 +1,8 @@
 import axios from "axios";
+import { ChangePasswordRequest } from "../types/user";
 
 const instance = axios.create({
-  baseURL: "http://localhost:3100/api",
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3100/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -58,3 +59,9 @@ instance.interceptors.response.use(
 );
 
 export default instance;
+
+// API functions
+export const changePassword = async (data: ChangePasswordRequest) => {
+  const response = await instance.post("/users/change-password", data);
+  return response.data;
+};

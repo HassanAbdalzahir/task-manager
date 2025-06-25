@@ -79,6 +79,7 @@ export class AuthService {
           password: data.password,
           role: data.role,
           workspaceId: workspace._id,
+          requiresPasswordChange: false, // CEOs don't need to change password on first login
         });
         await user.save();
 
@@ -139,6 +140,7 @@ export class AuthService {
         role: data.role,
         managerId: data.managerId,
         workspaceId: manager.workspaceId,
+        requiresPasswordChange: false, // Users who register themselves don't need to change password
       });
       await user.save();
 

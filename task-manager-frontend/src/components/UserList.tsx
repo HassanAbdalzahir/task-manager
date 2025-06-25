@@ -53,7 +53,8 @@ export default function UserList({ users }: UserListProps) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -136,6 +137,63 @@ export default function UserList({ users }: UserListProps) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden">
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {users.map((user) => (
+            <div
+              key={user._id}
+              className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 h-12 w-12">
+                  <div className="h-12 w-12 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {user.name}
+                    </h3>
+                    <div className="flex items-center">
+                      {getRoleIcon(user.role)}
+                      <span
+                        className={`ml-1 px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(
+                          user.role
+                        )}`}
+                      >
+                        {user.role}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    {user.email}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center">
+                      <UserIcon className="h-3 w-3 mr-1" />
+                      <span>
+                        {user.role !== "CEO" && user.managerId
+                          ? typeof user.managerId === "object"
+                            ? user.managerId.name
+                            : "Manager"
+                          : "No manager"}
+                      </span>
+                    </div>
+                    <span>
+                      Joined {new Date(user.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
