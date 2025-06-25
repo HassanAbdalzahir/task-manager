@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useNotificationStore } from "@/store/notificationStore";
 import { User } from "@/types/user";
 import { Search, Users as UsersIcon, Building } from "lucide-react";
 import axios from "@/lib/axios";
@@ -11,6 +12,7 @@ import { initializeSocket } from "@/lib/socket";
 
 export default function UsersPage() {
   const { isAuthenticated, workspace, user } = useAuthStore();
+  const { addNotification } = useNotificationStore();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -59,13 +61,47 @@ export default function UsersPage() {
 
         // Listen for socket events to refresh users (when new users are created)
         socket.on("user:created", () => {
-          fetchUsers();
+          silentUpdateUsers();
         });
       }
     }
 
     fetchUsers();
   }, [isAuthenticated, router]);
+
+  // Silent update function for socket events (no loading state)
+  const silentUpdateUsers = useCallback(async () => {
+    try {
+      // Use different endpoints based on user role
+      let response;
+      if (user?.role === "CEO") {
+        // CEOs can see all users in their workspace
+        response = await axios.get("/users");
+        const usersData = response.data.data?.users || [];
+        const fetchedUsers = Array.isArray(usersData) ? usersData : [];
+        setUsers(fetchedUsers);
+      } else if (user?.role === "Manager") {
+        // Managers can only see their subordinates
+        response = await axios.get("/users/subordinates");
+        const usersData = response.data.data?.subordinates || [];
+        const fetchedUsers = Array.isArray(usersData) ? usersData : [];
+        setUsers(fetchedUsers);
+      } else {
+        // Employees cannot access user management
+        setUsers([]);
+      }
+
+      // Show subtle notification for real-time updates
+      addNotification({
+        type: "info",
+        title: "Users Updated",
+        message: "Your user list has been updated with the latest data",
+        duration: 1500,
+      });
+    } catch {
+      // Silent fail - don't show errors for background updates
+    }
+  }, [user?.role, addNotification]);
 
   useEffect(() => {
     filterUsers();

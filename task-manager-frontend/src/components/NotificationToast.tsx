@@ -9,6 +9,7 @@ interface Notification {
   title: string;
   message: string;
   duration?: number;
+  isPersistent?: boolean; // Won't auto-dismiss
 }
 
 interface NotificationToastProps {
@@ -53,13 +54,23 @@ export default function NotificationToast({
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
+    // Don't auto-dismiss persistent notifications
+    if (notification.isPersistent) {
+      return;
+    }
+
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => onClose(notification.id), 300); // Allow animation to complete
     }, notification.duration || 5000);
 
     return () => clearTimeout(timer);
-  }, [notification.id, notification.duration, onClose]);
+  }, [
+    notification.id,
+    notification.duration,
+    notification.isPersistent,
+    onClose,
+  ]);
 
   return (
     <div

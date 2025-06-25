@@ -1,8 +1,9 @@
 import { Server } from "socket.io";
 import { ITask } from "../models/task.model";
+import { User } from "../models/user.model";
 import logger from "../utils/logger";
 
-// Task assigned notification
+// Task assigned notification - PERSISTENT (won't auto-dismiss)
 export const notifyTaskAssigned = (
   io: Server,
   task: ITask,
@@ -19,6 +20,7 @@ export const notifyTaskAssigned = (
         createdAt: task.createdAt,
       },
       message: `New task assigned: ${task.title}`,
+      isPersistent: true, // This notification won't auto-dismiss
     });
 
     logger.info(`Task assigned notification sent to user: ${assignedToId}`);
@@ -78,6 +80,51 @@ export const notifyTaskCompleted = (
     logger.info(`Task completed notification sent to creator: ${createdById}`);
   } catch (error) {
     logger.error("Error sending task completed notification:", error);
+  }
+};
+
+// Task status change notification to manager
+export const notifyManagerOfStatusChange = async (
+  io: Server,
+  task: ITask,
+  status: string,
+  updatedByUserId: string
+): Promise<void> => {
+  try {
+    // Get the task assignee to find their manager
+    const assignee = await User.findById(task.assignedTo);
+    if (!assignee || !assignee.managerId) {
+      return; // No manager to notify
+    }
+
+    // Get the user who updated the status
+    const updatedByUser = await User.findById(updatedByUserId);
+    if (!updatedByUser) {
+      return;
+    }
+
+    // Only notify if the assignee updated their own task status
+    if (task.assignedTo.toString() === updatedByUserId) {
+      const statusText = status === "in_progress" ? "in progress" : status;
+
+      io.to(assignee.managerId.toString()).emit("task:status_changed", {
+        type: "task:status_changed",
+        data: {
+          taskId: task._id,
+          title: task.title,
+          status: status,
+          updatedBy: updatedByUser.name,
+          updatedAt: task.updatedAt,
+        },
+        message: `${updatedByUser.name} marked task "${task.title}" as ${statusText}`,
+      });
+
+      logger.info(
+        `Task status change notification sent to manager: ${assignee.managerId}`
+      );
+    }
+  } catch (error) {
+    logger.error("Error sending manager status change notification:", error);
   }
 };
 

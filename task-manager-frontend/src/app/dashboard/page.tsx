@@ -168,6 +168,109 @@ export default function DashboardPage() {
     }
   }, [user?.role, addNotification]);
 
+  // Silent update function for socket events (no loading state)
+  const silentUpdateDashboard = useCallback(async () => {
+    try {
+      // Fetch tasks based on user role
+      let tasksResponse;
+      if (user?.role === "Employee") {
+        tasksResponse = await axios.get("/tasks/assigned");
+      } else if (user?.role === "Manager") {
+        const [assignedResponse, createdResponse] = await Promise.all([
+          axios.get("/tasks/assigned"),
+          axios.get("/tasks/created"),
+        ]);
+
+        const assignedTasks =
+          assignedResponse.data.data?.tasks ||
+          assignedResponse.data.tasks ||
+          assignedResponse.data ||
+          [];
+        const createdTasks =
+          createdResponse.data.data?.tasks ||
+          createdResponse.data.tasks ||
+          createdResponse.data ||
+          [];
+
+        const allTasks = [...assignedTasks];
+        const assignedTaskIds = new Set(
+          assignedTasks.map((task: Task) => task._id)
+        );
+
+        createdTasks.forEach((task: Task) => {
+          if (!assignedTaskIds.has(task._id)) {
+            allTasks.push(task);
+          }
+        });
+
+        tasksResponse = { data: { data: { tasks: allTasks } } };
+      } else {
+        tasksResponse = await axios.get("/tasks/subordinates");
+      }
+
+      // Fetch subordinates/users
+      const subordinatesResponse =
+        user?.role !== "Employee"
+          ? await axios.get(
+              user?.role === "CEO" ? "/users" : "/users/subordinates"
+            )
+          : { data: { data: { users: [] } } };
+
+      // Handle different possible response structures for tasks
+      const tasksData =
+        tasksResponse.data.data?.tasks ||
+        tasksResponse.data.tasks ||
+        tasksResponse.data ||
+        [];
+      const fetchedTasks = Array.isArray(tasksData) ? tasksData : [];
+
+      // Handle different possible response structures for users based on role
+      let fetchedSubordinates: User[] = [];
+      if (user?.role === "CEO") {
+        const usersData = subordinatesResponse.data.data?.users || [];
+        fetchedSubordinates = Array.isArray(usersData) ? usersData : [];
+      } else if (user?.role === "Manager") {
+        const subordinatesData =
+          subordinatesResponse.data.data?.subordinates || [];
+        fetchedSubordinates = Array.isArray(subordinatesData)
+          ? subordinatesData
+          : [];
+      }
+
+      setTasks(fetchedTasks);
+      setSubordinates(fetchedSubordinates);
+
+      // Calculate task stats
+      const newStats = {
+        totalTasks: fetchedTasks.length,
+        pendingTasks: fetchedTasks.filter(
+          (task: Task) => task.status === "pending"
+        ).length,
+        inProgressTasks: fetchedTasks.filter(
+          (task: Task) => task.status === "in_progress"
+        ).length,
+        completedTasks: fetchedTasks.filter(
+          (task: Task) => task.status === "completed"
+        ).length,
+        overdueTasks: fetchedTasks.filter(
+          (task: Task) => task.deadline && new Date(task.deadline) < new Date()
+        ).length,
+        subordinatesCount: fetchedSubordinates.length,
+      };
+      setStats(newStats);
+
+      // Show subtle notification for real-time updates
+      addNotification({
+        type: "info",
+        title: "Dashboard Updated",
+        message: "Your dashboard has been updated with the latest data",
+        duration: 1500,
+      });
+    } catch {
+      // Silent fail - don't show errors for background updates
+    }
+  }, [user?.role, addNotification]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login");
@@ -183,19 +286,19 @@ export default function DashboardPage() {
 
         // Listen for socket events to refresh data
         socket.on("task:assigned", () => {
-          fetchDashboardData();
+          silentUpdateDashboard();
         });
 
         socket.on("task:updated", () => {
-          fetchDashboardData();
+          silentUpdateDashboard();
         });
 
         socket.on("task:completed", () => {
-          fetchDashboardData();
+          silentUpdateDashboard();
         });
 
         socket.on("task:comment", () => {
-          fetchDashboardData();
+          silentUpdateDashboard();
         });
       }
     }

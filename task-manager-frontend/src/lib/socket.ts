@@ -21,14 +21,21 @@ export const initializeSocket = (token: string): Socket => {
     transports: ["websocket", "polling"],
   });
 
-  socket.on("connect", () => {});
+  socket.on("connect", () => {
+    console.log("✅ Connected to Socket.io server");
+  });
 
-  socket.on("disconnect", () => {});
+  socket.on("disconnect", () => {
+    console.log("❌ Disconnected from Socket.io server");
+  });
 
-  socket.on("connect_error", () => {});
+  socket.on("connect_error", (error) => {
+    console.error("🔴 Socket connection error:", error);
+  });
 
   // Task-related events
   socket.on("task:assigned", (data) => {
+    console.log("📋 Task assigned notification received:", data);
     const { addNotification } = useNotificationStore.getState();
     addNotification({
       type: "info",
@@ -39,6 +46,7 @@ export const initializeSocket = (token: string): Socket => {
   });
 
   socket.on("task:updated", (data) => {
+    console.log("📝 Task updated notification received:", data);
     const { addNotification } = useNotificationStore.getState();
     addNotification({
       type: "success",
@@ -49,6 +57,7 @@ export const initializeSocket = (token: string): Socket => {
   });
 
   socket.on("task:completed", (data) => {
+    console.log("✅ Task completed notification received:", data);
     const { addNotification } = useNotificationStore.getState();
     addNotification({
       type: "success",
@@ -59,6 +68,7 @@ export const initializeSocket = (token: string): Socket => {
   });
 
   socket.on("task:deadline", (data) => {
+    console.log("⏰ Task deadline notification received:", data);
     const { addNotification } = useNotificationStore.getState();
     const isOverdue = new Date(data.data.deadline) < new Date();
     addNotification({
@@ -72,6 +82,7 @@ export const initializeSocket = (token: string): Socket => {
   });
 
   socket.on("task:comment", (data) => {
+    console.log("💬 Task comment notification received:", data);
     const { addNotification } = useNotificationStore.getState();
     addNotification({
       type: "info",

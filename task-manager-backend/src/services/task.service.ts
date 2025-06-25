@@ -8,6 +8,7 @@ import {
   notifyTaskUpdated,
   notifyTaskCompleted,
   notifyTaskDeadline,
+  notifyManagerOfStatusChange,
 } from "../sockets/task.socket";
 
 export interface CreateTaskData {
@@ -335,6 +336,9 @@ export class TaskService {
         if (status === "completed") {
           notifyTaskCompleted(this.io, task, task.createdBy.toString());
         }
+
+        // Send manager notification if status changes
+        await notifyManagerOfStatusChange(this.io, task, status, userId);
       }
 
       logger.info(`Task status updated: ${taskId} to ${status} by ${userId}`);

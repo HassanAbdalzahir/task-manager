@@ -71,6 +71,48 @@ export default function TasksPage() {
     }
   }, [filter, user?.role, addNotification]);
 
+  // Silent update function for socket events (no loading state)
+  const silentUpdateTasks = useCallback(async () => {
+    try {
+      let endpoint = "/tasks";
+
+      if (filter === "assigned") {
+        endpoint = "/tasks/assigned";
+      } else if (filter === "created") {
+        endpoint = "/tasks/created";
+      } else if (filter === "subordinates") {
+        endpoint = "/tasks/subordinates";
+      } else if (filter === "all") {
+        if (user?.role === "Employee") {
+          endpoint = "/tasks/assigned";
+        } else if (user?.role === "Manager") {
+          endpoint = "/tasks/assigned";
+        } else {
+          // CEO sees subordinates tasks by default
+          endpoint = "/tasks/subordinates";
+        }
+      }
+
+      const response = await axios.get(endpoint);
+
+      // Handle different possible response structures
+      const tasksData =
+        response.data.data?.tasks || response.data.tasks || response.data || [];
+
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+
+      // Show subtle notification for real-time updates
+      addNotification({
+        type: "info",
+        title: "Tasks Updated",
+        message: "Your task list has been updated with the latest data",
+        duration: 1500,
+      });
+    } catch {
+      // Silent fail - don't show errors for background updates
+    }
+  }, [filter, user?.role, addNotification]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login");
@@ -85,19 +127,19 @@ export default function TasksPage() {
 
         // Listen for socket events to refresh tasks
         socket.on("task:assigned", () => {
-          fetchTasks();
+          silentUpdateTasks();
         });
 
         socket.on("task:updated", () => {
-          fetchTasks();
+          silentUpdateTasks();
         });
 
         socket.on("task:completed", () => {
-          fetchTasks();
+          silentUpdateTasks();
         });
 
         socket.on("task:comment", () => {
-          fetchTasks();
+          silentUpdateTasks();
         });
       }
     }

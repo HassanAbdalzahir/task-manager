@@ -10,6 +10,8 @@ import {
   ChevronDown,
   Menu,
   X,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -18,6 +20,7 @@ import DarkModeToggle from "@/components/DarkModeToggle";
 import { useEffect, useState, useRef } from "react";
 import axios from "@/lib/axios";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
+import { useNotificationStore } from "@/store/notificationStore";
 
 export default function Header() {
   const { user, workspace, logout, updateWorkspace } = useAuthStore();
@@ -28,6 +31,10 @@ export default function Header() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const { notifications, removeNotification, markAllAsRead, getUnreadCount } =
+    useNotificationStore();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const unreadCount = getUnreadCount();
 
   const handleLogout = () => {
     disconnectSocket();
@@ -177,9 +184,85 @@ export default function Header() {
             </nav>
 
             <div className="hidden md:flex items-center space-x-4">
-              <button className="p-2 text-gray-400 dark:text-gray-300 hover:text-gray-500 dark:hover:text-gray-100 transition-colors">
-                <Bell className="h-5 w-5" />
-              </button>
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  className="p-2 text-gray-400 dark:text-gray-300 hover:text-gray-500 dark:hover:text-gray-100 transition-colors relative"
+                  onClick={() => {
+                    setShowNotifications((prev) => !prev);
+                    if (!showNotifications) {
+                      markAllAsRead(); // Mark all as read when opened
+                    }
+                  }}
+                  aria-label="Show notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                {/* Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">
+                        No notifications
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`flex items-start px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b last:border-b-0 border-gray-100 dark:border-gray-700 ${
+                            !notification.isRead
+                              ? "bg-blue-50 dark:bg-blue-900/20"
+                              : ""
+                          }`}
+                        >
+                          <div className="mt-1 mr-2">
+                            {notification.type === "success" && (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            )}
+                            {notification.type === "error" && (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            {notification.type === "warning" && (
+                              <AlertCircle className="h-4 w-4 text-yellow-500" />
+                            )}
+                            {notification.type === "info" && (
+                              <Bell className="h-4 w-4 text-blue-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-gray-900 dark:text-white flex items-center">
+                              {notification.title}
+                              {!notification.isRead && (
+                                <span className="ml-2 w-2 h-2 bg-blue-500 rounded-full"></span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-300 break-words">
+                              {notification.message}
+                            </div>
+                            <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              {new Date(
+                                notification.timestamp
+                              ).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          <button
+                            className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            onClick={() => removeNotification(notification.id)}
+                            aria-label="Dismiss notification"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
 
               <DarkModeToggle />
 
