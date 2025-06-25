@@ -12,6 +12,7 @@ export interface ITask extends Document {
   status: "pending" | "in_progress" | "completed";
   assignedTo: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   deadline?: Date;
   comments: IComment[];
   createdAt: Date;
@@ -66,6 +67,11 @@ const taskSchema = new Schema<ITask>(
       ref: "User",
       required: [true, "Task creator is required"],
     },
+    workspaceId: {
+      type: Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: [true, "Workspace ID is required"],
+    },
     deadline: {
       type: Date,
       validate: {
@@ -86,6 +92,7 @@ const taskSchema = new Schema<ITask>(
 );
 
 // Indexes for efficient queries
+taskSchema.index({ workspaceId: 1 });
 taskSchema.index({ assignedTo: 1 });
 taskSchema.index({ createdBy: 1 });
 taskSchema.index({ status: 1 });

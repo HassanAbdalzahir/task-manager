@@ -40,7 +40,8 @@ export class TaskController {
           assignedTo,
           deadline: deadline ? new Date(deadline) : undefined,
         },
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(201).json({
@@ -65,7 +66,8 @@ export class TaskController {
 
       const user = req.user as IUser;
       const tasks = await taskService.getTasksAssignedToUser(
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -90,7 +92,8 @@ export class TaskController {
 
       const user = req.user as IUser;
       const tasks = await taskService.getTasksCreatedByUser(
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -115,7 +118,8 @@ export class TaskController {
 
       const user = req.user as IUser;
       const tasks = await taskService.getTasksForSubordinates(
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -141,7 +145,11 @@ export class TaskController {
       }
 
       const user = req.user as IUser;
-      const task = await taskService.getTaskById(taskId, user._id.toString());
+      const task = await taskService.getTaskById(
+        taskId,
+        user._id.toString(),
+        user.workspaceId.toString()
+      );
 
       res.status(200).json({
         success: true,
@@ -180,7 +188,8 @@ export class TaskController {
       const task = await taskService.updateTaskStatus(
         taskId,
         status,
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -210,7 +219,8 @@ export class TaskController {
       const task = await taskService.updateTask(
         taskId,
         updateData,
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -247,8 +257,9 @@ export class TaskController {
       const user = req.user as IUser;
       const task = await taskService.addComment(
         taskId,
-        { message },
-        user._id.toString()
+        { message: message.trim() },
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -274,7 +285,11 @@ export class TaskController {
       }
 
       const user = req.user as IUser;
-      await taskService.deleteTask(taskId, user._id.toString());
+      await taskService.deleteTask(
+        taskId,
+        user._id.toString(),
+        user.workspaceId.toString()
+      );
 
       res.status(200).json({
         success: true,
@@ -295,7 +310,10 @@ export class TaskController {
         return;
       }
 
-      if (!["pending", "in_progress", "completed"].includes(status)) {
+      if (
+        !status ||
+        !["pending", "in_progress", "completed"].includes(status)
+      ) {
         res.status(400).json({
           success: false,
           message: "Valid status is required (pending, in_progress, completed)",
@@ -306,7 +324,8 @@ export class TaskController {
       const user = req.user as IUser;
       const tasks = await taskService.getTasksByStatus(
         status,
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -314,7 +333,6 @@ export class TaskController {
         data: {
           tasks,
           count: tasks.length,
-          status,
         },
       });
     }
@@ -331,7 +349,10 @@ export class TaskController {
       }
 
       const user = req.user as IUser;
-      const tasks = await taskService.getOverdueTasks(user._id.toString());
+      const tasks = await taskService.getOverdueTasks(
+        user._id.toString(),
+        user.workspaceId.toString()
+      );
 
       res.status(200).json({
         success: true,

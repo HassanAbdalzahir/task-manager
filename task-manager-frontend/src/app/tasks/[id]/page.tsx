@@ -179,15 +179,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   if (!task) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Task not found
         </h2>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
           The task you&apos;re looking for doesn&apos;t exist.
         </p>
         <button
           onClick={() => router.push("/tasks")}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Tasks
@@ -207,7 +207,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.push("/tasks")}
-          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Tasks
@@ -215,13 +215,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       </div>
 
       {/* Task Details */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
         <div className="flex justify-between items-start mb-6">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {task.title}
             </h1>
-            <p className="text-gray-600">{task.description}</p>
+            <p className="text-gray-600 dark:text-gray-300">
+              {task.description}
+            </p>
           </div>
           <span
             className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
@@ -234,11 +236,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="space-y-4">
-            <div className="flex items-center text-sm text-gray-600">
+            <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
               <User className="h-4 w-4 mr-2" />
               <span>Assigned to: {task.assignedTo.name}</span>
             </div>
-            <div className="flex items-center text-sm text-gray-600">
+            <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
               <User className="h-4 w-4 mr-2" />
               <span>Created by: {task.createdBy.name}</span>
             </div>
@@ -247,7 +249,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 <Calendar className="h-4 w-4 mr-2" />
                 <span
                   className={
-                    isOverdue ? "text-red-600 font-medium" : "text-gray-600"
+                    isOverdue
+                      ? "text-red-600 dark:text-red-400 font-medium"
+                      : "text-gray-600 dark:text-gray-300"
                   }
                 >
                   Due: {format(new Date(task.deadline), "MMM dd, yyyy HH:mm")}
@@ -255,7 +259,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 </span>
               </div>
             )}
-            <div className="flex items-center text-sm text-gray-600">
+            <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
               <Clock className="h-4 w-4 mr-2" />
               <span>
                 Created:{" "}
@@ -267,7 +271,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           {/* Status Update */}
           {canUpdateStatus && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-900 flex items-center">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
                 <Edit3 className="h-4 w-4 mr-2" />
                 Update Status
               </h3>
@@ -277,8 +281,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   disabled={isUpdatingStatus || task.status === "pending"}
                   className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                     task.status === "pending"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-gray-100 text-gray-700 hover:bg-yellow-50 hover:text-yellow-700"
+                      ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 hover:text-yellow-700 dark:hover:text-yellow-300"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   Pending
@@ -288,8 +292,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   disabled={isUpdatingStatus || task.status === "in_progress"}
                   className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                     task.status === "in_progress"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                      ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-700 dark:hover:text-blue-300"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   In Progress
@@ -299,15 +303,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   disabled={isUpdatingStatus || task.status === "completed"}
                   className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                     task.status === "completed"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-700 dark:hover:text-green-300"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   Completed
                 </button>
               </div>
               {isUpdatingStatus && (
-                <div className="flex items-center text-sm text-gray-500">
+                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
                   Updating status...
                 </div>
@@ -318,10 +322,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       </div>
 
       {/* Comments */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
         <div className="flex items-center mb-4">
-          <MessageSquare className="h-5 w-5 text-gray-400 mr-2" />
-          <h3 className="text-lg font-semibold text-gray-900">
+          <MessageSquare className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Comments ({task.comments.length})
           </h3>
         </div>
@@ -335,14 +339,14 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
                 onKeyPress={(e) => e.key === "Enter" && addComment()}
                 disabled={isAddingComment}
               />
               <button
                 onClick={addComment}
                 disabled={!newComment.trim() || isAddingComment}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isAddingComment ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -357,22 +361,26 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         {/* Comments List */}
         <div className="space-y-4">
           {task.comments.length === 0 ? (
-            <p className="text-gray-500 text-sm">No comments yet.</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              No comments yet.
+            </p>
           ) : (
             task.comments.map((comment) => (
               <div
                 key={comment._id}
-                className="border-l-4 border-gray-200 pl-4"
+                className="border-l-4 border-gray-200 dark:border-gray-600 pl-4"
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {comment.createdBy.name}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {format(new Date(comment.createdAt), "MMM dd, yyyy HH:mm")}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">{comment.message}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {comment.message}
+                </p>
               </div>
             ))
           )}
@@ -380,8 +388,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
     </div>

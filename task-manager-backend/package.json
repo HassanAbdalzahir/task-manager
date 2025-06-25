@@ -1,7 +1,7 @@
 {
-  "name": "task-manager-backend",
+  "name": "nanotask-backend",
   "version": "1.0.0",
-  "description": "Hierarchical Task Management System Backend",
+  "description": "NanoTask - Hierarchical Task Management System Backend",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",

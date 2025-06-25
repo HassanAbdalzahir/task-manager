@@ -5,6 +5,62 @@ import { asyncHandler } from "../middleware/errorHandler";
 import logger from "../utils/logger";
 
 export class UserController {
+  createUser = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      const currentUser = req.user as IUser;
+      const { name, email, password, role, managerId } = req.body;
+
+      // Validate required fields
+      if (!name || !email || !password || !role) {
+        res.status(400).json({
+          success: false,
+          message: "Name, email, password, and role are required",
+        });
+        return;
+      }
+
+      // Only CEO and Managers can create users
+      if (currentUser.role === "Employee") {
+        res.status(403).json({
+          success: false,
+          message: "Employees cannot create users",
+        });
+        return;
+      }
+
+      // Managers can only create Employees
+      if (currentUser.role === "Manager" && role !== "Employee") {
+        res.status(403).json({
+          success: false,
+          message: "Managers can only create Employee accounts",
+        });
+        return;
+      }
+
+      const newUser = await userService.createUser(
+        { name, email, password, role, managerId },
+        currentUser.workspaceId.toString(),
+        currentUser._id.toString()
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "User created successfully",
+        data: {
+          user: newUser,
+        },
+      });
+    }
+  );
+
   getDirectSubordinates = asyncHandler(
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       if (!req.user) {
@@ -17,7 +73,8 @@ export class UserController {
 
       const user = req.user as IUser;
       const subordinates = await userService.getDirectSubordinates(
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -42,7 +99,8 @@ export class UserController {
 
       const user = req.user as IUser;
       const subordinates = await userService.getAllSubordinates(
-        user._id.toString()
+        user._id.toString(),
+        user.workspaceId.toString()
       );
 
       res.status(200).json({
@@ -66,7 +124,10 @@ export class UserController {
       }
 
       const user = req.user as IUser;
-      const hierarchy = await userService.getUserHierarchy(user._id.toString());
+      const hierarchy = await userService.getUserHierarchy(
+        user._id.toString(),
+        user.workspaceId.toString()
+      );
 
       res.status(200).json({
         success: true,
@@ -92,7 +153,8 @@ export class UserController {
       // Users can only view their own profile or their subordinates
       if (userId !== user._id.toString()) {
         const allSubordinates = await userService.getAllSubordinates(
-          user._id.toString()
+          user._id.toString(),
+          user.workspaceId.toString()
         );
         const isSubordinate = allSubordinates.some(
           (sub) => sub._id.toString() === userId
@@ -107,7 +169,10 @@ export class UserController {
         }
       }
 
-      const targetUser = await userService.getUserById(userId);
+      const targetUser = await userService.getUserById(
+        userId,
+        user.workspaceId.toString()
+      );
 
       res.status(200).json({
         success: true,
@@ -139,13 +204,42 @@ export class UserController {
         return;
       }
 
-      const users = await userService.getAllUsers();
+      const users = await userService.getAllUsers(user.workspaceId.toString());
 
       res.status(200).json({
         success: true,
         data: {
           users,
           count: users.length,
+        },
+      });
+    }
+  );
+
+  getAvailableManagers = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      const user = req.user as IUser;
+      const { excludeUserId } = req.query;
+
+      const managers = await userService.getAvailableManagers(
+        user.workspaceId.toString(),
+        excludeUserId as string,
+        user._id.toString()
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          managers,
+          count: managers.length,
         },
       });
     }
@@ -179,7 +273,11 @@ export class UserController {
       delete updateData.role;
       delete updateData.managerId;
 
-      const updatedUser = await userService.updateUser(userId, updateData);
+      const updatedUser = await userService.updateUser(
+        userId,
+        updateData,
+        user.workspaceId.toString()
+      );
 
       res.status(200).json({
         success: true,
@@ -223,7 +321,7 @@ export class UserController {
         return;
       }
 
-      await userService.deleteUser(userId);
+      await userService.deleteUser(userId, user.workspaceId.toString());
 
       res.status(200).json({
         success: true,
@@ -255,14 +353,16 @@ export class UserController {
         return;
       }
 
-      const users = await userService.getUsersByRole(role);
+      const users = await userService.getUsersByRole(
+        role,
+        user.workspaceId.toString()
+      );
 
       res.status(200).json({
         success: true,
         data: {
           users,
           count: users.length,
-          role,
         },
       });
     }

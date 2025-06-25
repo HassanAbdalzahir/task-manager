@@ -13,6 +13,7 @@ export interface Task {
     name: string;
     email: string;
   };
+  workspaceId: string;
   deadline?: string;
   comments: Comment[];
   createdAt: string;

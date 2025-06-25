@@ -1,5 +1,6 @@
 import jwt, { SignOptions } from "jsonwebtoken";
 import { User, IUser } from "../models/user.model";
+import { Workspace } from "../models/workspace.model";
 import { env } from "../config/env";
 import { createError } from "../middleware/errorHandler";
 import logger from "../utils/logger";
@@ -11,6 +12,8 @@ export interface RegisterData {
   password: string;
   role: "CEO" | "Manager" | "Employee";
   managerId?: string;
+  workspaceName?: string; // For CEO registration
+  workspaceDescription?: string; // For CEO registration
 }
 
 export interface LoginData {
@@ -21,6 +24,7 @@ export interface LoginData {
 export interface AuthResponse {
   user: IUser;
   token: string;
+  workspace?: any;
 }
 
 export class AuthService {
@@ -29,6 +33,7 @@ export class AuthService {
       userId: user._id,
       email: user.email,
       role: user.role,
+      workspaceId: user.workspaceId,
     };
 
     const options: SignOptions = {
@@ -40,69 +45,108 @@ export class AuthService {
 
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      // Check if user already exists
-      const existingUser = await User.findOne({ email: data.email });
-      if (existingUser) {
-        throw createError("User with this email already exists", 400);
-      }
-
-      // Handle CEO registration - they shouldn't have a manager
+      // Handle CEO registration - create workspace
       if (data.role === "CEO") {
         if (data.managerId) {
           throw createError("CEO cannot have a manager", 400);
         }
 
-        // Check if CEO already exists
-        const existingCEO = await User.findOne({ role: "CEO" });
-        if (existingCEO) {
-          throw createError("Only one CEO can exist in the system", 400);
+        if (!data.workspaceName) {
+          throw createError(
+            "Workspace name is required for CEO registration",
+            400
+          );
         }
+
+        // Check if email already exists in any workspace
+        const existingUser = await User.findOne({ email: data.email });
+        if (existingUser) {
+          throw createError("User with this email already exists", 400);
+        }
+
+        // Create workspace first
+        const workspace = new Workspace({
+          name: data.workspaceName,
+          description: data.workspaceDescription,
+          createdBy: null, // Will be set after user creation
+        });
+        await workspace.save();
+
+        // Create CEO user
+        const user = new User({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+          workspaceId: workspace._id,
+        });
+        await user.save();
+
+        // Update workspace with CEO as creator
+        workspace.createdBy = user._id as mongoose.Types.ObjectId;
+        await workspace.save();
+
+        const token = this.generateToken(user);
+
+        logger.info(
+          `New CEO registered: ${user.email} with workspace: ${workspace.name}`
+        );
+
+        return { user, token, workspace };
       }
 
-      // Validate manager assignment for non-CEO roles
-      if (data.role !== "CEO") {
-        if (!data.managerId) {
-          throw createError("Manager ID is required for non-CEO roles", 400);
-        }
-
-        // Validate ObjectId format
-        if (!mongoose.Types.ObjectId.isValid(data.managerId)) {
-          throw createError("Invalid manager ID format", 400);
-        }
-
-        const manager = await User.findById(data.managerId);
-        if (!manager) {
-          throw createError("Manager not found", 404);
-        }
-
-        // Ensure manager has appropriate role
-        if (data.role === "Manager" && manager.role !== "CEO") {
-          throw createError("Managers can only be assigned by CEO", 400);
-        }
-
-        if (data.role === "Employee" && manager.role === "Employee") {
-          throw createError("Employees cannot assign other employees", 400);
-        }
+      // Handle non-CEO registration
+      if (!data.managerId) {
+        throw createError("Manager ID is required for non-CEO roles", 400);
       }
 
-      // Prepare user data - exclude managerId for CEO
-      const userData = {
+      // Validate ObjectId format
+      if (!mongoose.Types.ObjectId.isValid(data.managerId)) {
+        throw createError("Invalid manager ID format", 400);
+      }
+
+      const manager = await User.findById(data.managerId);
+      if (!manager) {
+        throw createError("Manager not found", 404);
+      }
+
+      // Check if email already exists in the same workspace
+      const existingUser = await User.findOne({
+        email: data.email,
+        workspaceId: manager.workspaceId,
+      });
+      if (existingUser) {
+        throw createError(
+          "User with this email already exists in this workspace",
+          400
+        );
+      }
+
+      // Ensure manager has appropriate role
+      if (data.role === "Manager" && manager.role !== "CEO") {
+        throw createError("Managers can only be assigned by CEO", 400);
+      }
+
+      if (data.role === "Employee" && manager.role === "Employee") {
+        throw createError("Employees cannot assign other employees", 400);
+      }
+
+      // Create user in the same workspace as manager
+      const user = new User({
         name: data.name,
         email: data.email,
         password: data.password,
         role: data.role,
-        ...(data.role !== "CEO" && data.managerId
-          ? { managerId: data.managerId }
-          : {}),
-      };
-
-      // Create new user
-      const user = new User(userData);
+        managerId: data.managerId,
+        workspaceId: manager.workspaceId,
+      });
       await user.save();
 
       const token = this.generateToken(user);
 
-      logger.info(`New user registered: ${user.email} with role ${user.role}`);
+      logger.info(
+        `New user registered: ${user.email} with role ${user.role} in workspace: ${manager.workspaceId}`
+      );
 
       return { user, token };
     } catch (error) {
@@ -113,7 +157,7 @@ export class AuthService {
 
   async login(data: LoginData): Promise<AuthResponse> {
     try {
-      // Find user by email
+      // Find user by email (email is unique within workspace, but not globally)
       const user = await User.findOne({ email: data.email });
       if (!user) {
         throw createError("Invalid email or password", 401);
@@ -127,9 +171,17 @@ export class AuthService {
 
       const token = this.generateToken(user);
 
-      logger.info(`User logged in: ${user.email}`);
+      // Get workspace info for CEO
+      let workspace = null;
+      if (user.role === "CEO") {
+        workspace = await Workspace.findById(user.workspaceId);
+      }
 
-      return { user, token };
+      logger.info(
+        `User logged in: ${user.email} in workspace: ${user.workspaceId}`
+      );
+
+      return { user, token, workspace };
     } catch (error) {
       logger.error("Login error:", error);
       throw error;

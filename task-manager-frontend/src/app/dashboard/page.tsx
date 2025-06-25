@@ -59,22 +59,54 @@ export default function DashboardPage() {
       setError("");
 
       // Fetch tasks based on user role
-      let tasksEndpoint = "";
+      let tasksResponse;
       if (user?.role === "Employee") {
-        tasksEndpoint = "/tasks/assigned";
+        // Employees only see tasks assigned to them
+        tasksResponse = await axios.get("/tasks/assigned");
       } else if (user?.role === "Manager") {
-        tasksEndpoint = "/tasks/assigned";
+        // Managers see tasks assigned to them AND tasks they created
+        const [assignedResponse, createdResponse] = await Promise.all([
+          axios.get("/tasks/assigned"),
+          axios.get("/tasks/created"),
+        ]);
+
+        // Combine both arrays, removing duplicates by task ID
+        const assignedTasks =
+          assignedResponse.data.data?.tasks ||
+          assignedResponse.data.tasks ||
+          assignedResponse.data ||
+          [];
+        const createdTasks =
+          createdResponse.data.data?.tasks ||
+          createdResponse.data.tasks ||
+          createdResponse.data ||
+          [];
+
+        const allTasks = [...assignedTasks];
+        const assignedTaskIds = new Set(
+          assignedTasks.map((task: Task) => task._id)
+        );
+
+        // Add created tasks that aren't already in assigned tasks
+        createdTasks.forEach((task: Task) => {
+          if (!assignedTaskIds.has(task._id)) {
+            allTasks.push(task);
+          }
+        });
+
+        tasksResponse = { data: { data: { tasks: allTasks } } };
       } else {
         // CEO sees subordinates tasks by default
-        tasksEndpoint = "/tasks/subordinates";
+        tasksResponse = await axios.get("/tasks/subordinates");
       }
 
-      const [tasksResponse, subordinatesResponse] = await Promise.all([
-        axios.get(tasksEndpoint),
+      // Fetch subordinates/users
+      const subordinatesResponse =
         user?.role !== "Employee"
-          ? axios.get(user?.role === "CEO" ? "/users" : "/users/subordinates")
-          : Promise.resolve({ data: { users: [] } }),
-      ]);
+          ? await axios.get(
+              user?.role === "CEO" ? "/users" : "/users/subordinates"
+            )
+          : { data: { data: { users: [] } } };
 
       // Handle different possible response structures for tasks
       const tasksData =
@@ -84,15 +116,20 @@ export default function DashboardPage() {
         [];
       const fetchedTasks = Array.isArray(tasksData) ? tasksData : [];
 
-      // Handle different possible response structures for users
-      const usersData =
-        subordinatesResponse.data.data?.users ||
-        subordinatesResponse.data.data?.subordinates ||
-        subordinatesResponse.data.users ||
-        subordinatesResponse.data.subordinates ||
-        subordinatesResponse.data ||
-        [];
-      const fetchedSubordinates = Array.isArray(usersData) ? usersData : [];
+      // Handle different possible response structures for users based on role
+      let fetchedSubordinates: User[] = [];
+      if (user?.role === "CEO") {
+        // CEO gets all users from /users endpoint
+        const usersData = subordinatesResponse.data.data?.users || [];
+        fetchedSubordinates = Array.isArray(usersData) ? usersData : [];
+      } else if (user?.role === "Manager") {
+        // Manager gets subordinates from /users/subordinates endpoint
+        const subordinatesData =
+          subordinatesResponse.data.data?.subordinates || [];
+        fetchedSubordinates = Array.isArray(subordinatesData)
+          ? subordinatesData
+          : [];
+      }
 
       setTasks(fetchedTasks);
       setSubordinates(fetchedSubordinates);
@@ -175,14 +212,18 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user?.name}!</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Dashboard
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">
+            Welcome back, {user?.name}!
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           {user?.role !== "Employee" && (
             <button
               onClick={() => setShowUserForm(true)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50"
             >
               <Users className="h-4 w-4 mr-2" />
               Create User
@@ -202,56 +243,56 @@ export default function DashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <ClipboardList className="h-8 w-8 text-blue-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Tasks</p>
-              <p className="text-2xl font-semibold text-gray-900">
+              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {stats.totalTasks}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Clock className="h-8 w-8 text-yellow-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending</p>
-              <p className="text-2xl font-semibold text-gray-900">
+              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {stats.pendingTasks}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <TrendingUp className="h-8 w-8 text-blue-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">In Progress</p>
-              <p className="text-2xl font-semibold text-gray-900">
+              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {stats.inProgressTasks}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Completed</p>
-              <p className="text-2xl font-semibold text-gray-900">
+              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {stats.completedTasks}
               </p>
             </div>
@@ -273,8 +314,8 @@ export default function DashboardPage() {
       )}
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab("overview")}
@@ -315,7 +356,7 @@ export default function DashboardPage() {
           {activeTab === "overview" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Recent Tasks
                 </h3>
                 {tasks.length === 0 ? (
@@ -323,11 +364,7 @@ export default function DashboardPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {tasks.slice(0, 6).map((task) => (
-                      <TaskCard
-                        key={task._id}
-                        task={task}
-                        onUpdate={fetchDashboardData}
-                      />
+                      <TaskCard key={task._id} task={task} />
                     ))}
                   </div>
                 )}
@@ -338,7 +375,9 @@ export default function DashboardPage() {
           {activeTab === "tasks" && (
             <div>
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">All Tasks</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  All Tasks
+                </h3>
                 <button
                   onClick={() => router.push("/tasks")}
                   className="text-sm text-blue-600 hover:text-blue-700"
@@ -351,11 +390,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {tasks.map((task) => (
-                    <TaskCard
-                      key={task._id}
-                      task={task}
-                      onUpdate={fetchDashboardData}
-                    />
+                    <TaskCard key={task._id} task={task} />
                   ))}
                 </div>
               )}
@@ -364,10 +399,10 @@ export default function DashboardPage() {
 
           {activeTab === "users" && user?.role !== "Employee" && (
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Subordinates
               </h3>
-              <UserList users={subordinates} title="Subordinates" />
+              <UserList users={subordinates} />
             </div>
           )}
         </div>
@@ -376,7 +411,7 @@ export default function DashboardPage() {
       {/* Modals */}
       {showTaskForm && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div className="mt-3">
               <AssignTaskForm
                 subordinates={subordinates}
@@ -395,7 +430,7 @@ export default function DashboardPage() {
 
       {showUserForm && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div className="mt-3">
               <CreateUserForm onUserCreated={handleUserCreated} />
               <button

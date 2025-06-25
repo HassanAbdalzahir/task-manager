@@ -163,14 +163,18 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-          <p className="text-gray-600">Manage and track your tasks</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Tasks
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">
+            Manage and track your tasks
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <button
             onClick={refreshTasks}
             disabled={isRefreshing}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw
               className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
@@ -188,7 +192,7 @@ export default function TasksPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Task Type Filter */}
           <div>
@@ -228,7 +232,7 @@ export default function TasksPage() {
               id="statusFilter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as TaskStatus)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:bg-gray-800 text-gray-900 dark:text-white dark:text-gray-100"
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -253,7 +257,7 @@ export default function TasksPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search tasks..."
-                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:bg-gray-800 text-gray-900 dark:text-white dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
               />
             </div>
           </div>
@@ -261,7 +265,7 @@ export default function TasksPage() {
       </div>
 
       {/* Results Summary */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
         <span>
           Showing {filteredTasks.length} of {tasks.length} tasks
           {searchTerm && ` matching "${searchTerm}"`}
@@ -305,10 +309,10 @@ export default function TasksPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 No tasks found
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
                 {searchTerm
                   ? `No tasks match your search "${searchTerm}"`
                   : `No tasks found for the selected filters`}
@@ -324,9 +328,7 @@ export default function TasksPage() {
               </button>
             </div>
           ) : (
-            filteredTasks.map((task) => (
-              <TaskCard key={task._id} task={task} onUpdate={fetchTasks} />
-            ))
+            filteredTasks.map((task) => <TaskCard key={task._id} task={task} />)
           )}
         </div>
       )}

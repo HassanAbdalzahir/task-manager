@@ -16,8 +16,8 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
 } as const;
 
-// Validate required environment variables
-const requiredEnvVars = ["JWT_SECRET", "MONGO_URI"];
+// Only validate truly required environment variables (those without defaults)
+const requiredEnvVars: string[] = [];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);

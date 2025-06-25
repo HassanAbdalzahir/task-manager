@@ -3,9 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import mongoose from "mongoose";
-import swaggerUi from "swagger-ui-express";
 import { env } from "./config/env";
-import { specs } from "./config/swagger";
 import logger from "./utils/logger";
 
 // Import routes
@@ -63,24 +61,6 @@ export class App {
   }
 
   private initializeRoutes(): void {
-    // Swagger UI
-    this.app.use(
-      "/api-docs",
-      ...(swaggerUi.serve as any),
-      swaggerUi.setup(specs, {
-        customCss: ".swagger-ui .topbar { display: none }",
-        customSiteTitle: "Task Manager API Documentation",
-        customfavIcon: "/favicon.ico",
-        swaggerOptions: {
-          persistAuthorization: true,
-          displayRequestDuration: true,
-          filter: true,
-          showExtensions: true,
-          showCommonExtensions: true,
-        },
-      }) as any
-    );
-
     // API routes
     this.app.use("/api/auth", authRoutes);
     this.app.use("/api/users", userRoutes);

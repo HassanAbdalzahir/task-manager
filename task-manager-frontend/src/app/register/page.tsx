@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, Crown } from "lucide-react";
+import { Mail, Lock, User, Crown, Building } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { RegisterRequest } from "@/types/user";
 import { initializeSocket } from "@/lib/socket";
@@ -37,17 +37,20 @@ export default function RegisterPage() {
       const registrationData = {
         ...data,
         role: "CEO" as const,
+        workspaceName: data.workspaceName || `${data.name}'s Workspace`,
+        workspaceDescription:
+          data.workspaceDescription || `Workspace created by ${data.name}`,
       };
 
       const response = await axios.post("/auth/register", registrationData);
-      const { user, accessToken, refreshToken } = response.data;
+      const { user, accessToken, refreshToken, workspace } = response.data.data;
 
       // Store tokens in localStorage for axios interceptor
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
 
       // Update auth store
-      login(user, accessToken, refreshToken);
+      login(user, accessToken, refreshToken, workspace);
 
       // Initialize socket connection
       initializeSocket(accessToken);
@@ -63,14 +66,14 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create CEO Account
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+            Create NanoTask Workspace
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Set up the first CEO account for your organization
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-300">
+            Set up your workspace and CEO account
           </p>
         </div>
 
@@ -78,24 +81,74 @@ export default function RegisterPage() {
           <div className="space-y-4">
             <div>
               <label
+                htmlFor="workspaceName"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Workspace Name
+              </label>
+              <div className="mt-1 relative">
+                <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <input
+                  {...register("workspaceName", {
+                    required: "Workspace name is required",
+                  })}
+                  id="workspaceName"
+                  type="text"
+                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                  placeholder="Enter workspace name"
+                />
+              </div>
+              {errors.workspaceName && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.workspaceName.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="workspaceDescription"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Workspace Description (Optional)
+              </label>
+              <div className="mt-1 relative">
+                <textarea
+                  {...register("workspaceDescription")}
+                  id="workspaceDescription"
+                  rows={2}
+                  className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                  placeholder="Describe your workspace"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                CEO Account
+              </h3>
+            </div>
+
+            <div>
+              <label
                 htmlFor="name"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 Full Name
               </label>
               <div className="mt-1 relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <input
                   {...register("name", { required: "Name is required" })}
                   id="name"
                   type="text"
                   autoComplete="name"
-                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
                   placeholder="Enter your full name"
                 />
               </div>
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                   {errors.name.message}
                 </p>
               )}
@@ -104,12 +157,12 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 Email address
               </label>
               <div className="mt-1 relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <input
                   {...register("email", {
                     required: "Email is required",
@@ -121,12 +174,12 @@ export default function RegisterPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
                   placeholder="Enter your email"
                 />
               </div>
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                   {errors.email.message}
                 </p>
               )}
@@ -135,12 +188,12 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 Password
               </label>
               <div className="mt-1 relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <input
                   {...register("password", {
                     required: "Password is required",
@@ -152,34 +205,34 @@ export default function RegisterPage() {
                   id="password"
                   type="password"
                   autoComplete="new-password"
-                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
                   placeholder="Enter your password"
                 />
               </div>
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                   {errors.password.message}
                 </p>
               )}
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
               <div className="flex items-center">
-                <Crown className="h-4 w-4 text-blue-600 mr-2" />
-                <span className="text-sm text-blue-800 font-medium">
+                <Crown className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
+                <span className="text-sm text-blue-800 dark:text-blue-200 font-medium">
                   CEO Role
                 </span>
               </div>
-              <p className="text-xs text-blue-600 mt-1">
-                This account will be created as the first CEO with full system
+              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                This account will be created as the CEO with full workspace
                 access.
               </p>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
 
@@ -187,27 +240,27 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
                 <>
-                  <Crown className="h-4 w-4 mr-2" />
-                  Create CEO Account
+                  <Building className="h-4 w-4 mr-2" />
+                  Create Workspace & CEO Account
                 </>
               )}
             </button>
           </div>
 
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               Already have an account?{" "}
               <Link
                 href="/login"
-                className="font-medium text-blue-600 hover:text-blue-500"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
               >
-                Sign in here
+                Sign in
               </Link>
             </p>
           </div>

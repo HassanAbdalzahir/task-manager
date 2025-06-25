@@ -98,16 +98,16 @@ export default function CreateTaskPage() {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Create New Task
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               Assign a new task to your subordinates
             </p>
           </div>
@@ -117,11 +117,11 @@ export default function CreateTaskPage() {
       {/* Task Creation Form */}
       <div className="max-w-2xl">
         {subordinates.length === 0 ? (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <svg
-                  className="h-5 w-5 text-yellow-400"
+                  className="h-5 w-5 text-yellow-400 dark:text-yellow-300"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
@@ -133,10 +133,10 @@ export default function CreateTaskPage() {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
+                <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                   No Subordinates Found
                 </h3>
-                <div className="mt-2 text-sm text-yellow-700">
+                <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
                   <p>
                     You need to have subordinates before you can assign tasks.
                     Please create some users first.
@@ -145,7 +145,7 @@ export default function CreateTaskPage() {
                 <div className="mt-4">
                   <button
                     onClick={() => router.push("/dashboard")}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-800 bg-yellow-100 hover:bg-yellow-200"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Users
@@ -163,8 +163,8 @@ export default function CreateTaskPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
     </div>

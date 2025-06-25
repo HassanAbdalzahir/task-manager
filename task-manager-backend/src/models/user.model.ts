@@ -7,6 +7,7 @@ export interface IUser extends Document {
   password: string;
   role: "CEO" | "Manager" | "Employee";
   managerId?: mongoose.Types.ObjectId;
+  workspaceId: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -23,7 +24,6 @@ const userSchema = new Schema<IUser>(
     email: {
       type: String,
       required: [true, "Email is required"],
-      unique: true,
       lowercase: true,
       trim: true,
       match: [
@@ -50,6 +50,11 @@ const userSchema = new Schema<IUser>(
         return this.role !== "CEO";
       },
     },
+    workspaceId: {
+      type: Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: [true, "Workspace ID is required"],
+    },
   },
   {
     timestamps: true,
@@ -62,8 +67,11 @@ const userSchema = new Schema<IUser>(
   }
 );
 
+// Compound index for email uniqueness within workspace
+userSchema.index({ email: 1, workspaceId: 1 }, { unique: true });
+
 // Index for efficient queries
-userSchema.index({ email: 1 });
+userSchema.index({ workspaceId: 1 });
 userSchema.index({ managerId: 1 });
 userSchema.index({ role: 1 });
 

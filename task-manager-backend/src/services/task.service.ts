@@ -2,6 +2,7 @@ import { Task, ITask, IComment } from "../models/task.model";
 import { User, IUser } from "../models/user.model";
 import { createError } from "../middleware/errorHandler";
 import logger from "../utils/logger";
+import mongoose from "mongoose";
 
 export interface CreateTaskData {
   title: string;
@@ -23,66 +24,80 @@ export interface AddCommentData {
 }
 
 export class TaskService {
-  async createTask(data: CreateTaskData, createdBy: string): Promise<ITask> {
+  async createTask(
+    data: CreateTaskData,
+    createdBy: string,
+    workspaceId: string
+  ): Promise<ITask> {
     try {
-      // Verify the creator exists
+      // Verify the creator exists and belongs to the workspace
       const creator = await User.findById(createdBy);
       if (!creator) {
         throw createError("Creator not found", 404);
       }
+      if (creator.workspaceId.toString() !== workspaceId) {
+        throw createError("Creator does not belong to this workspace", 403);
+      }
 
-      // Verify the assignee exists
+      // Verify the assignee exists and belongs to the workspace
       const assignee = await User.findById(data.assignedTo);
       if (!assignee) {
         throw createError("Assignee not found", 404);
       }
+      if (assignee.workspaceId.toString() !== workspaceId) {
+        throw createError("Assignee does not belong to this workspace", 403);
+      }
 
-      // CEOs can assign tasks to anyone in their organization
+      // CEOs can assign tasks to anyone in their workspace
       if (creator.role === "CEO") {
         const task = new Task({
           ...data,
           createdBy,
+          workspaceId,
           status: "pending",
         });
 
         await task.save();
 
         logger.info(
-          `Task created: ${task.title} by ${createdBy} for ${data.assignedTo}`
-        );
-        logger.info(
-          `Task details: ID=${task._id}, AssignedTo=${task.assignedTo}, CreatedBy=${task.createdBy}`
+          `Task created: ${task.title} by ${createdBy} for ${data.assignedTo} in workspace: ${workspaceId}`
         );
 
         return task;
       }
 
-      // Check if creator can assign to this user (must be direct subordinate)
-      const isDirectSubordinate = await User.exists({
-        _id: data.assignedTo,
-        managerId: createdBy,
-      });
+      // Managers can assign tasks to their direct subordinates
+      if (creator.role === "Manager") {
+        const isDirectSubordinate = await User.exists({
+          _id: data.assignedTo,
+          managerId: createdBy,
+          workspaceId,
+        });
 
-      if (!isDirectSubordinate) {
-        throw createError(
-          "You can only assign tasks to your direct subordinates",
-          403
-        );
+        if (!isDirectSubordinate) {
+          throw createError(
+            "You can only assign tasks to your direct subordinates",
+            403
+          );
+        }
+      }
+
+      // Employees cannot assign tasks
+      if (creator.role === "Employee") {
+        throw createError("Employees cannot assign tasks", 403);
       }
 
       const task = new Task({
         ...data,
         createdBy,
+        workspaceId,
         status: "pending",
       });
 
       await task.save();
 
       logger.info(
-        `Task created: ${task.title} by ${createdBy} for ${data.assignedTo}`
-      );
-      logger.info(
-        `Task details: ID=${task._id}, AssignedTo=${task.assignedTo}, CreatedBy=${task.createdBy}`
+        `Task created: ${task.title} by ${createdBy} for ${data.assignedTo} in workspace: ${workspaceId}`
       );
 
       return task;
@@ -92,27 +107,26 @@ export class TaskService {
     }
   }
 
-  async getTasksAssignedToUser(userId: string): Promise<ITask[]> {
+  async getTasksAssignedToUser(
+    userId: string,
+    workspaceId: string
+  ): Promise<ITask[]> {
     try {
-      logger.info(`Looking for tasks assigned to user: ${userId}`);
+      logger.info(
+        `Looking for tasks assigned to user: ${userId} in workspace: ${workspaceId}`
+      );
 
-      const tasks = await Task.find({ assignedTo: userId })
+      const tasks = await Task.find({
+        assignedTo: userId,
+        workspaceId,
+      })
         .populate("createdBy", "name email role")
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
 
       logger.info(
-        `Retrieved ${tasks.length} tasks assigned to user: ${userId}`
+        `Retrieved ${tasks.length} tasks assigned to user: ${userId} in workspace: ${workspaceId}`
       );
-
-      // Log each task for debugging
-      tasks.forEach((task, index) => {
-        logger.info(
-          `Task ${index + 1}: ID=${task._id}, Title="${
-            task.title
-          }", AssignedTo=${task.assignedTo}, CreatedBy=${task.createdBy}`
-        );
-      });
 
       return tasks;
     } catch (error) {
@@ -121,14 +135,22 @@ export class TaskService {
     }
   }
 
-  async getTasksCreatedByUser(userId: string): Promise<ITask[]> {
+  async getTasksCreatedByUser(
+    userId: string,
+    workspaceId: string
+  ): Promise<ITask[]> {
     try {
-      const tasks = await Task.find({ createdBy: userId })
+      const tasks = await Task.find({
+        createdBy: userId,
+        workspaceId,
+      })
         .populate("createdBy", "name email role")
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
 
-      logger.info(`Retrieved ${tasks.length} tasks created by user: ${userId}`);
+      logger.info(
+        `Retrieved ${tasks.length} tasks created by user: ${userId} in workspace: ${workspaceId}`
+      );
       return tasks;
     } catch (error) {
       logger.error("Error getting tasks created by user:", error);
@@ -136,11 +158,17 @@ export class TaskService {
     }
   }
 
-  async getTasksForSubordinates(userId: string): Promise<ITask[]> {
+  async getTasksForSubordinates(
+    userId: string,
+    workspaceId: string
+  ): Promise<ITask[]> {
     try {
       // Get all subordinates recursively
       const { userService } = await import("./user.service");
-      const allSubordinates = await userService.getAllSubordinates(userId);
+      const allSubordinates = await userService.getAllSubordinates(
+        userId,
+        workspaceId
+      );
       const subordinateIds = allSubordinates.map((sub) => sub._id);
 
       const tasks = await Task.find({
@@ -148,13 +176,14 @@ export class TaskService {
           { assignedTo: { $in: subordinateIds } },
           { createdBy: { $in: subordinateIds } },
         ],
+        workspaceId,
       })
         .populate("createdBy", "name email role")
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
 
       logger.info(
-        `Retrieved ${tasks.length} tasks for subordinates of user: ${userId}`
+        `Retrieved ${tasks.length} tasks for subordinates of user: ${userId} in workspace: ${workspaceId}`
       );
       return tasks;
     } catch (error) {
@@ -163,7 +192,11 @@ export class TaskService {
     }
   }
 
-  async getTaskById(taskId: string, userId: string): Promise<ITask> {
+  async getTaskById(
+    taskId: string,
+    userId: string,
+    workspaceId: string
+  ): Promise<ITask> {
     try {
       const task = await Task.findById(taskId)
         .populate("createdBy", "name email role")
@@ -173,13 +206,23 @@ export class TaskService {
         throw createError("Task not found", 404);
       }
 
+      // Verify task belongs to the workspace
+      if (task.workspaceId.toString() !== workspaceId) {
+        throw createError("Task does not belong to this workspace", 403);
+      }
+
       // Get the current user to check their role
       const currentUser = await User.findById(userId);
       if (!currentUser) {
         throw createError("User not found", 404);
       }
 
-      // CEOs have access to all tasks in their organization
+      // Verify user belongs to the workspace
+      if (currentUser.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
+      }
+
+      // CEOs have access to all tasks in their workspace
       if (currentUser.role === "CEO") {
         return task;
       }
@@ -188,7 +231,11 @@ export class TaskService {
       const hasAccess =
         task.assignedTo._id.toString() === userId ||
         task.createdBy._id.toString() === userId ||
-        (await this.isUserManagerOf(task.assignedTo._id.toString(), userId));
+        (await this.isUserManagerOf(
+          task.assignedTo._id.toString(),
+          userId,
+          workspaceId
+        ));
 
       if (!hasAccess) {
         throw createError("Access denied to this task", 403);
@@ -204,7 +251,8 @@ export class TaskService {
   async updateTaskStatus(
     taskId: string,
     status: string,
-    userId: string
+    userId: string,
+    workspaceId: string
   ): Promise<ITask> {
     try {
       const task = await Task.findById(taskId);
@@ -212,31 +260,43 @@ export class TaskService {
         throw createError("Task not found", 404);
       }
 
-      // Get the current user to check their role
+      // Verify task belongs to the workspace
+      if (task.workspaceId.toString() !== workspaceId) {
+        throw createError("Task does not belong to this workspace", 403);
+      }
+
+      // Get the current user
       const currentUser = await User.findById(userId);
       if (!currentUser) {
         throw createError("User not found", 404);
       }
 
-      // CEOs can update any task's status
-      if (currentUser.role === "CEO") {
-        task.status = status as "pending" | "in_progress" | "completed";
-        await task.save();
-
-        logger.info(`Task status updated: ${taskId} to ${status} by ${userId}`);
-        return task;
+      // Verify user belongs to the workspace
+      if (currentUser.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
       }
 
-      // Only the assignee can update task status
-      if (task.assignedTo.toString() !== userId) {
-        throw createError("Only the assigned user can update task status", 403);
+      // Only the assigned user or their manager can update task status
+      const canUpdate =
+        task.assignedTo.toString() === userId ||
+        task.createdBy.toString() === userId ||
+        (await this.isUserManagerOf(
+          task.assignedTo.toString(),
+          userId,
+          workspaceId
+        ));
+
+      if (!canUpdate) {
+        throw createError(
+          "You can only update tasks assigned to you or your subordinates",
+          403
+        );
       }
 
       task.status = status as "pending" | "in_progress" | "completed";
       await task.save();
 
       logger.info(`Task status updated: ${taskId} to ${status} by ${userId}`);
-
       return task;
     } catch (error) {
       logger.error("Error updating task status:", error);
@@ -247,7 +307,8 @@ export class TaskService {
   async updateTask(
     taskId: string,
     data: UpdateTaskData,
-    userId: string
+    userId: string,
+    workspaceId: string
   ): Promise<ITask> {
     try {
       const task = await Task.findById(taskId);
@@ -255,42 +316,57 @@ export class TaskService {
         throw createError("Task not found", 404);
       }
 
-      // Get the current user to check their role
+      // Verify task belongs to the workspace
+      if (task.workspaceId.toString() !== workspaceId) {
+        throw createError("Task does not belong to this workspace", 403);
+      }
+
+      // Get the current user
       const currentUser = await User.findById(userId);
       if (!currentUser) {
         throw createError("User not found", 404);
       }
 
-      // CEOs can update any task and assign to anyone
-      if (currentUser.role === "CEO") {
-        const updatedTask = await Task.findByIdAndUpdate(taskId, data, {
-          new: true,
-          runValidators: true,
-        })
-          .populate("createdBy", "name email role")
-          .populate("assignedTo", "name email role");
-
-        logger.info(`Task updated: ${taskId} by ${userId}`);
-        return updatedTask!;
+      // Verify user belongs to the workspace
+      if (currentUser.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
       }
 
-      // Only the creator can update task details
-      if (task.createdBy.toString() !== userId) {
-        throw createError("Only the task creator can update task details", 403);
+      // Only the creator or CEO can update task details
+      const canUpdate =
+        task.createdBy.toString() === userId || currentUser.role === "CEO";
+
+      if (!canUpdate) {
+        throw createError("You can only update tasks you created", 403);
       }
 
-      // If changing assignee, verify it's a direct subordinate
-      if (data.assignedTo && data.assignedTo !== task.assignedTo.toString()) {
-        const isDirectSubordinate = await User.exists({
-          _id: data.assignedTo,
-          managerId: userId,
-        });
-
-        if (!isDirectSubordinate) {
+      // If reassigning, verify the new assignee exists and belongs to the workspace
+      if (data.assignedTo) {
+        const newAssignee = await User.findById(data.assignedTo);
+        if (!newAssignee) {
+          throw createError("New assignee not found", 404);
+        }
+        if (newAssignee.workspaceId.toString() !== workspaceId) {
           throw createError(
-            "You can only assign tasks to your direct subordinates",
+            "New assignee does not belong to this workspace",
             403
           );
+        }
+
+        // Managers can only reassign to their subordinates
+        if (currentUser.role === "Manager") {
+          const isSubordinate = await User.exists({
+            _id: data.assignedTo,
+            managerId: userId,
+            workspaceId,
+          });
+
+          if (!isSubordinate) {
+            throw createError(
+              "You can only reassign tasks to your subordinates",
+              403
+            );
+          }
         }
       }
 
@@ -302,7 +378,6 @@ export class TaskService {
         .populate("assignedTo", "name email role");
 
       logger.info(`Task updated: ${taskId} by ${userId}`);
-
       return updatedTask!;
     } catch (error) {
       logger.error("Error updating task:", error);
@@ -313,7 +388,8 @@ export class TaskService {
   async addComment(
     taskId: string,
     data: AddCommentData,
-    userId: string
+    userId: string,
+    workspaceId: string
   ): Promise<ITask> {
     try {
       const task = await Task.findById(taskId);
@@ -321,76 +397,90 @@ export class TaskService {
         throw createError("Task not found", 404);
       }
 
-      // Get the current user to check their role
+      // Verify task belongs to the workspace
+      if (task.workspaceId.toString() !== workspaceId) {
+        throw createError("Task does not belong to this workspace", 403);
+      }
+
+      // Get the current user
       const currentUser = await User.findById(userId);
       if (!currentUser) {
         throw createError("User not found", 404);
       }
 
-      // CEOs can comment on any task
-      if (currentUser.role === "CEO") {
-        const comment: IComment = {
-          message: data.message,
-          createdAt: new Date(),
-          createdBy: userId as any,
-        };
-
-        task.comments.push(comment);
-        await task.save();
-
-        logger.info(`Comment added to task: ${taskId} by ${userId}`);
-        return task;
+      // Verify user belongs to the workspace
+      if (currentUser.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
       }
 
-      // Only the assignee or creator can add comments
-      if (
-        task.assignedTo.toString() !== userId &&
-        task.createdBy.toString() !== userId
-      ) {
-        throw createError("Access denied to add comments to this task", 403);
+      // Check if user has access to this task
+      const hasAccess =
+        task.assignedTo.toString() === userId ||
+        task.createdBy.toString() === userId ||
+        (await this.isUserManagerOf(
+          task.assignedTo.toString(),
+          userId,
+          workspaceId
+        ));
+
+      if (!hasAccess) {
+        throw createError("Access denied to this task", 403);
       }
 
       const comment: IComment = {
         message: data.message,
         createdAt: new Date(),
-        createdBy: userId as any,
+        createdBy: currentUser._id as mongoose.Types.ObjectId,
       };
 
       task.comments.push(comment);
       await task.save();
 
-      logger.info(`Comment added to task: ${taskId} by ${userId}`);
+      const populatedTask = await Task.findById(taskId)
+        .populate("createdBy", "name email role")
+        .populate("assignedTo", "name email role");
 
-      return task;
+      logger.info(`Comment added to task: ${taskId} by ${userId}`);
+      return populatedTask!;
     } catch (error) {
       logger.error("Error adding comment:", error);
       throw error;
     }
   }
 
-  async deleteTask(taskId: string, userId: string): Promise<void> {
+  async deleteTask(
+    taskId: string,
+    userId: string,
+    workspaceId: string
+  ): Promise<void> {
     try {
       const task = await Task.findById(taskId);
       if (!task) {
         throw createError("Task not found", 404);
       }
 
-      // Get the current user to check their role
+      // Verify task belongs to the workspace
+      if (task.workspaceId.toString() !== workspaceId) {
+        throw createError("Task does not belong to this workspace", 403);
+      }
+
+      // Get the current user
       const currentUser = await User.findById(userId);
       if (!currentUser) {
         throw createError("User not found", 404);
       }
 
-      // CEOs can delete any task
-      if (currentUser.role === "CEO") {
-        await Task.findByIdAndDelete(taskId);
-        logger.info(`Task deleted: ${taskId} by ${userId}`);
-        return;
+      // Verify user belongs to the workspace
+      if (currentUser.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
       }
 
-      // Only the creator can delete the task
-      if (task.createdBy.toString() !== userId) {
-        throw createError("Only the task creator can delete the task", 403);
+      // Only the creator or CEO can delete tasks
+      const canDelete =
+        task.createdBy.toString() === userId || currentUser.role === "CEO";
+
+      if (!canDelete) {
+        throw createError("You can only delete tasks you created", 403);
       }
 
       await Task.findByIdAndDelete(taskId);
@@ -404,42 +494,79 @@ export class TaskService {
 
   private async isUserManagerOf(
     subordinateId: string,
-    managerId: string
+    managerId: string,
+    workspaceId: string
   ): Promise<boolean> {
     try {
       const subordinate = await User.findById(subordinateId);
-      if (!subordinate) return false;
+      if (!subordinate) {
+        return false;
+      }
 
-      // Check if the user is in the management chain
-      let currentManagerId = subordinate.managerId;
-      while (currentManagerId) {
-        if (currentManagerId.toString() === managerId) {
-          return true;
-        }
-        const manager = await User.findById(currentManagerId);
-        if (!manager) break;
-        currentManagerId = manager.managerId;
+      // Verify both users belong to the same workspace
+      if (subordinate.workspaceId.toString() !== workspaceId) {
+        return false;
+      }
+
+      // Check if the manager is directly above the subordinate
+      if (subordinate.managerId?.toString() === managerId) {
+        return true;
+      }
+
+      // Check if the manager is higher up in the hierarchy
+      if (subordinate.managerId) {
+        return await this.isUserManagerOf(
+          subordinate.managerId.toString(),
+          managerId,
+          workspaceId
+        );
       }
 
       return false;
     } catch (error) {
-      logger.error("Error checking management relationship:", error);
+      logger.error("Error checking manager relationship:", error);
       return false;
     }
   }
 
-  async getTasksByStatus(status: string, userId: string): Promise<ITask[]> {
+  async getTasksByStatus(
+    status: string,
+    userId: string,
+    workspaceId: string
+  ): Promise<ITask[]> {
     try {
-      const tasks = await Task.find({
-        assignedTo: userId,
-        status: status as "pending" | "in_progress" | "completed",
-      })
-        .populate("createdBy", "name email role")
-        .populate("assignedTo", "name email role")
-        .sort({ createdAt: -1 });
+      const currentUser = await User.findById(userId);
+      if (!currentUser) {
+        throw createError("User not found", 404);
+      }
+
+      // Verify user belongs to the workspace
+      if (currentUser.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
+      }
+
+      let tasks: ITask[];
+
+      if (currentUser.role === "CEO") {
+        // CEOs can see all tasks in their workspace
+        tasks = await Task.find({ status, workspaceId })
+          .populate("createdBy", "name email role")
+          .populate("assignedTo", "name email role")
+          .sort({ createdAt: -1 });
+      } else {
+        // Others can only see tasks they're involved with
+        tasks = await Task.find({
+          status,
+          workspaceId,
+          $or: [{ assignedTo: userId }, { createdBy: userId }],
+        })
+          .populate("createdBy", "name email role")
+          .populate("assignedTo", "name email role")
+          .sort({ createdAt: -1 });
+      }
 
       logger.info(
-        `Retrieved ${tasks.length} ${status} tasks for user: ${userId}`
+        `Retrieved ${tasks.length} tasks with status: ${status} for user: ${userId}`
       );
       return tasks;
     } catch (error) {
@@ -448,16 +575,43 @@ export class TaskService {
     }
   }
 
-  async getOverdueTasks(userId: string): Promise<ITask[]> {
+  async getOverdueTasks(userId: string, workspaceId: string): Promise<ITask[]> {
     try {
-      const tasks = await Task.find({
-        assignedTo: userId,
-        status: { $ne: "completed" },
-        deadline: { $lt: new Date() },
-      })
-        .populate("createdBy", "name email role")
-        .populate("assignedTo", "name email role")
-        .sort({ deadline: 1 });
+      const currentUser = await User.findById(userId);
+      if (!currentUser) {
+        throw createError("User not found", 404);
+      }
+
+      // Verify user belongs to the workspace
+      if (currentUser.workspaceId.toString() !== workspaceId) {
+        throw createError("User does not belong to this workspace", 403);
+      }
+
+      const now = new Date();
+      let tasks: ITask[];
+
+      if (currentUser.role === "CEO") {
+        // CEOs can see all overdue tasks in their workspace
+        tasks = await Task.find({
+          workspaceId,
+          deadline: { $lt: now },
+          status: { $ne: "completed" },
+        })
+          .populate("createdBy", "name email role")
+          .populate("assignedTo", "name email role")
+          .sort({ deadline: 1 });
+      } else {
+        // Others can only see overdue tasks they're involved with
+        tasks = await Task.find({
+          workspaceId,
+          deadline: { $lt: now },
+          status: { $ne: "completed" },
+          $or: [{ assignedTo: userId }, { createdBy: userId }],
+        })
+          .populate("createdBy", "name email role")
+          .populate("assignedTo", "name email role")
+          .sort({ deadline: 1 });
+      }
 
       logger.info(
         `Retrieved ${tasks.length} overdue tasks for user: ${userId}`

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { User, Mail, Lock, Crown, Users, UserCheck } from "lucide-react";
-import { RegisterRequest } from "@/types/user";
+import { CreateUserRequest } from "@/types/user";
 import { useAuthStore } from "@/store/authStore";
 import axios from "@/lib/axios";
 
@@ -31,7 +31,7 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
     reset,
     watch,
     formState: { errors },
-  } = useForm<RegisterRequest>();
+  } = useForm<CreateUserRequest>();
 
   const watchedRole = watch("role");
 
@@ -41,62 +41,27 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
 
   const fetchAvailableManagers = useCallback(async () => {
     try {
-      let managers: Manager[] = [];
-
-      if (user?.role === "CEO") {
-        // CEO can assign managers to anyone including themselves
-        const response = await axios.get("/users");
-        const usersData =
-          response.data.users ||
-          response.data.data?.users ||
-          response.data ||
-          [];
-        const users = Array.isArray(usersData) ? usersData : [];
-        managers = users; // Include all users including the CEO themselves
-      } else {
-        // For non-CEO users, get their subordinates and add the CEO
-        const response = await axios.get("/users/subordinates");
-        const usersData =
-          response.data.users ||
-          response.data.data?.users ||
-          response.data ||
-          [];
-        const users = Array.isArray(usersData) ? usersData : [];
-
-        if (user?.role === "Manager") {
-          // Manager can only assign employees
-          managers = users.filter((u: Manager) => u.role === "Employee");
-        } else {
-          // Employee can't assign anyone, but we still need to show available managers
-          managers = users;
-        }
-
-        // Add the CEO to the managers list
-        try {
-          // Get the CEO by finding the user without a manager (top of hierarchy)
-          const allUsersResponse = await axios.get("/users/subordinates");
-          const allUsersData =
-            allUsersResponse.data.users ||
-            allUsersResponse.data.data?.users ||
-            allUsersResponse.data ||
-            [];
-          const allUsers = Array.isArray(allUsersData) ? allUsersData : [];
-          const ceo = allUsers.find((u: Manager) => u.role === "CEO");
-
-          if (ceo && !managers.some((m) => m._id === ceo._id)) {
-            managers.unshift(ceo); // Add CEO at the beginning of the list
-          }
-        } catch (ceoErr) {
-          console.error("Failed to fetch CEO:", ceoErr);
-        }
+      const response = await axios.get("/users/available-managers");
+      const managersData =
+        response.data.data?.managers || response.data.managers || [];
+      let managers = Array.isArray(managersData) ? managersData : [];
+      // Ensure current user is included if not already present
+      if (
+        user &&
+        user.role !== "Employee" &&
+        !managers.some((m) => m._id === user._id)
+      ) {
+        managers = [
+          { _id: user._id, name: user.name, role: user.role },
+          ...managers,
+        ];
       }
-
       setAvailableManagers(managers);
     } catch (err) {
       console.error("Failed to fetch managers:", err);
       setAvailableManagers([]);
     }
-  }, [user?.role]);
+  }, [user]);
 
   useEffect(() => {
     // Fetch available managers when role changes
@@ -107,19 +72,19 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
     }
   }, [selectedRole, fetchAvailableManagers]);
 
-  const onSubmit = async (data: RegisterRequest) => {
+  const onSubmit = async (data: CreateUserRequest) => {
     setIsLoading(true);
     setError("");
     setSuccess("");
 
     try {
       // Add managerId for non-CEO roles
-      const registrationData = {
+      const userData = {
         ...data,
         ...(data.role !== "CEO" && { managerId: data.managerId }),
       };
 
-      await axios.post("/auth/register", registrationData);
+      await axios.post("/users", userData);
       reset();
       setSelectedRole("");
       setSuccess("User created successfully!");
@@ -149,8 +114,8 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Create New User
       </h3>
 
@@ -158,34 +123,36 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
         <div>
           <label
             htmlFor="name"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Full Name
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <input
               {...register("name", { required: "Name is required" })}
               type="text"
               id="name"
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               placeholder="Enter full name"
             />
           </div>
           {errors.name && (
-            <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {errors.name.message}
+            </p>
           )}
         </div>
 
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <input
               {...register("email", {
                 required: "Email is required",
@@ -196,24 +163,26 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
               })}
               type="email"
               id="email"
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               placeholder="Enter email address"
             />
           </div>
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {errors.email.message}
+            </p>
           )}
         </div>
 
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <input
               {...register("password", {
                 required: "Password is required",
@@ -224,12 +193,12 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
               })}
               type="password"
               id="password"
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               placeholder="Enter password"
             />
           </div>
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
               {errors.password.message}
             </p>
           )}
@@ -238,45 +207,52 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
         <div>
           <label
             htmlFor="role"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Role
           </label>
           <div className="relative">
-            <Crown className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Crown className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <select
               {...register("role", { required: "Role is required" })}
               id="role"
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
             >
               <option value="">Select a role</option>
-              {user?.role === "CEO" && <option value="Manager">Manager</option>}
-              <option value="Employee">Employee</option>
+              {user?.role === "CEO" && (
+                <>
+                  <option value="Manager">Manager</option>
+                  <option value="Employee">Employee</option>
+                </>
+              )}
+              {user?.role === "Manager" && (
+                <option value="Employee">Employee</option>
+              )}
             </select>
           </div>
           {errors.role && (
-            <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {errors.role.message}
+            </p>
           )}
         </div>
 
-        {/* Manager Selection - only show for non-CEO roles */}
         {selectedRole && selectedRole !== "CEO" && (
           <div>
             <label
               htmlFor="managerId"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               Manager
             </label>
             <div className="relative">
-              <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <select
                 {...register("managerId", {
-                  required:
-                    selectedRole !== "CEO" ? "Manager is required" : false,
+                  required: "Manager is required for non-CEO roles",
                 })}
                 id="managerId"
-                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               >
                 <option value="">Select a manager</option>
                 {availableManagers.map((manager) => (
@@ -287,47 +263,53 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
               </select>
             </div>
             {errors.managerId && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                 {errors.managerId.message}
-              </p>
-            )}
-            {availableManagers.length === 0 && selectedRole !== "CEO" && (
-              <p className="mt-1 text-sm text-yellow-600">
-                No available managers found. Please create a manager first.
               </p>
             )}
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-3">
-            <p className="text-sm text-green-600">{success}</p>
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3">
+            <p className="text-sm text-green-600 dark:text-green-400">
+              {success}
+            </p>
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={
-            isLoading ||
-            (selectedRole !== "CEO" && availableManagers.length === 0)
-          }
-          className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-          ) : (
-            <>
-              <Users className="h-4 w-4 mr-2" />
-              Create User
-            </>
-          )}
-        </button>
+        <div className="flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              setSelectedRole("");
+              setError("");
+              setSuccess("");
+            }}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            ) : (
+              <UserCheck className="h-4 w-4 mr-2" />
+            )}
+            Create User
+          </button>
+        </div>
       </form>
     </div>
   );

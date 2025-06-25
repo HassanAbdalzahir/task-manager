@@ -1,90 +1,142 @@
 "use client";
 
-import { User as UserType } from "@/types/user";
-import { User, Mail, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { User } from "@/types/user";
+import { Crown, Users, User as UserIcon } from "lucide-react";
 
 interface UserListProps {
-  users: UserType[];
-  title: string;
+  users: User[];
 }
 
-const getRoleColor = (role: string) => {
-  switch (role) {
-    case "CEO":
-      return "bg-purple-100 text-purple-800";
-    case "Manager":
-      return "bg-blue-100 text-blue-800";
-    case "Employee":
-      return "bg-green-100 text-green-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
+export default function UserList({ users }: UserListProps) {
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case "CEO":
+        return (
+          <Crown className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        );
+      case "Manager":
+        return <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+      case "Employee":
+        return (
+          <UserIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        );
+      default:
+        return (
+          <UserIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        );
+    }
+  };
 
-export default function UserList({ users, title }: UserListProps) {
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case "CEO":
+        return "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200";
+      case "Manager":
+        return "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200";
+      case "Employee":
+        return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200";
+      default:
+        return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200";
+    }
+  };
 
-      {users.length === 0 ? (
-        <div className="text-center py-8">
-          <User className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">
-            No users found
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            There are no users under your management.
-          </p>
+  if (!users || users.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No users found</p>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {users.map((user) => (
-            <div
-              key={user._id}
-              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-blue-600" />
-                  </div>
-                </div>
+      </div>
+    );
+  }
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {user.name}
-                    </p>
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Role
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Assigned to
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Join Date
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {users.map((user) => (
+              <tr
+                key={user._id}
+                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 h-10 w-10">
+                      <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user.name}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {user.email}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    {getRoleIcon(user.role)}
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(
+                      className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(
                         user.role
                       )}`}
                     >
                       {user.role}
                     </span>
                   </div>
-
-                  <div className="flex items-center space-x-4 mt-1">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Mail className="h-4 w-4 mr-1" />
-                      <span>{user.email}</span>
-                    </div>
-
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      <span>
-                        Joined{" "}
-                        {format(new Date(user.createdAt), "MMM dd, yyyy")}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {user.role !== "CEO" && user.managerId ? (
+                    <div className="flex items-center">
+                      <UserIcon className="h-4 w-4 text-gray-400 dark:text-gray-500 mr-1" />
+                      <span
+                        className="truncate max-w-32"
+                        title={
+                          typeof user.managerId === "object"
+                            ? user.managerId.name
+                            : "Manager"
+                        }
+                      >
+                        {typeof user.managerId === "object"
+                          ? user.managerId.name
+                          : "Manager"}
                       </span>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-500">-</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

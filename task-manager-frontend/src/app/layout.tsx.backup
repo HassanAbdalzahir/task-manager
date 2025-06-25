@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import ThemeProvider from "@/components/ThemeProvider";
 import Header from "@/components/Header";
+import NotificationContainer from "@/components/NotificationContainer";
+import ThemeProvider from "@/components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NanoTask - Hierarchical Task Manager",
-  description: "A hierarchical task management system",
+  title: "Task Manager - Hierarchical Task Management System",
+  description:
+    "A comprehensive task management system with hierarchical user structure",
 };
 
 export default function RootLayout({
@@ -18,11 +20,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={inter.className}>
         <ThemeProvider>
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
             <Header />
-            <main className="container mx-auto px-4 py-8">{children}</main>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {children}
+            </main>
+            <NotificationContainer />
           </div>
         </ThemeProvider>
       </body>

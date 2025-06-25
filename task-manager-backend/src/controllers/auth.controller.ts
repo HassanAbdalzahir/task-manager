@@ -2,11 +2,20 @@ import { Request, Response, NextFunction } from "express";
 import { authService, RegisterData, LoginData } from "../services/auth.service";
 import { asyncHandler } from "../middleware/errorHandler";
 import logger from "../utils/logger";
+import { workspaceService } from "../services/workspace.service";
 
 export class AuthController {
   register = asyncHandler(
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const { name, email, password, role, managerId }: RegisterData = req.body;
+      const {
+        name,
+        email,
+        password,
+        role,
+        managerId,
+        workspaceName,
+        workspaceDescription,
+      }: RegisterData = req.body;
 
       // Validate required fields
       if (!name || !email || !password || !role) {
@@ -26,12 +35,23 @@ export class AuthController {
         return;
       }
 
+      // Validate workspace name for CEO
+      if (role === "CEO" && !workspaceName) {
+        res.status(400).json({
+          success: false,
+          message: "Workspace name is required for CEO registration",
+        });
+        return;
+      }
+
       const result = await authService.register({
         name,
         email,
         password,
         role,
         managerId,
+        workspaceName,
+        workspaceDescription,
       });
 
       res.status(201).json({
@@ -41,6 +61,7 @@ export class AuthController {
           user: result.user,
           accessToken: result.token,
           refreshToken: result.token, // For now, using the same token as refresh token
+          workspace: result.workspace,
         },
       });
     }
@@ -68,6 +89,7 @@ export class AuthController {
           user: result.user,
           accessToken: result.token,
           refreshToken: result.token, // For now, using the same token as refresh token
+          workspace: result.workspace,
         },
       });
     }
@@ -89,6 +111,37 @@ export class AuthController {
           user: req.user,
         },
       });
+    }
+  );
+
+  getWorkspace = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      try {
+        const workspace = await workspaceService.getWorkspaceById(
+          req.user.workspaceId.toString()
+        );
+
+        res.status(200).json({
+          success: true,
+          data: {
+            workspace,
+          },
+        });
+      } catch (error) {
+        logger.error("Error fetching workspace:", error);
+        res.status(404).json({
+          success: false,
+          message: "Workspace not found",
+        });
+      }
     }
   );
 
