@@ -181,6 +181,17 @@ export default function Header() {
               <Link href="/users" className={getLinkStyles("/users")}>
                 Users
               </Link>
+              <Link
+                href="/notifications"
+                className={getLinkStyles("/notifications")}
+              >
+                Notifications
+                {unreadCount > 0 && (
+                  <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
             </nav>
 
             <div className="hidden md:flex items-center space-x-4">
@@ -205,60 +216,74 @@ export default function Header() {
                 </button>
                 {/* Dropdown */}
                 {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700 max-h-96 overflow-hidden">
                     {notifications.length === 0 ? (
                       <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">
                         No notifications
                       </div>
                     ) : (
-                      notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className={`flex items-start px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b last:border-b-0 border-gray-100 dark:border-gray-700 ${
-                            !notification.isRead
-                              ? "bg-blue-50 dark:bg-blue-900/20"
-                              : ""
-                          }`}
-                        >
-                          <div className="mt-1 mr-2">
-                            {notification.type === "success" && (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            )}
-                            {notification.type === "error" && (
-                              <AlertCircle className="h-4 w-4 text-red-500" />
-                            )}
-                            {notification.type === "warning" && (
-                              <AlertCircle className="h-4 w-4 text-yellow-500" />
-                            )}
-                            {notification.type === "info" && (
-                              <Bell className="h-4 w-4 text-blue-500" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm text-gray-900 dark:text-white flex items-center">
-                              {notification.title}
-                              {!notification.isRead && (
-                                <span className="ml-2 w-2 h-2 bg-blue-500 rounded-full"></span>
+                      <div className="max-h-80">
+                        {notifications.slice(0, 5).map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`flex items-start px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b last:border-b-0 border-gray-100 dark:border-gray-700 ${
+                              !notification.isRead
+                                ? "bg-blue-50 dark:bg-blue-900/20"
+                                : ""
+                            }`}
+                          >
+                            <div className="mt-1 mr-2">
+                              {notification.type === "success" && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {notification.type === "error" && (
+                                <AlertCircle className="h-4 w-4 text-red-500" />
+                              )}
+                              {notification.type === "warning" && (
+                                <AlertCircle className="h-4 w-4 text-yellow-500" />
+                              )}
+                              {notification.type === "info" && (
+                                <Bell className="h-4 w-4 text-blue-500" />
                               )}
                             </div>
-                            <div className="text-xs text-gray-600 dark:text-gray-300 break-words">
-                              {notification.message}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm text-gray-900 dark:text-white flex items-center">
+                                {notification.title}
+                                {!notification.isRead && (
+                                  <span className="ml-2 w-2 h-2 bg-blue-500 rounded-full"></span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-600 dark:text-gray-300 break-words">
+                                {notification.message}
+                              </div>
+                              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                {new Date(
+                                  notification.timestamp
+                                ).toLocaleTimeString()}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                              {new Date(
-                                notification.timestamp
-                              ).toLocaleTimeString()}
-                            </div>
+                            <button
+                              className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                              onClick={() =>
+                                removeNotification(notification.id)
+                              }
+                              aria-label="Dismiss notification"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
                           </div>
-                          <button
-                            className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                            onClick={() => removeNotification(notification.id)}
-                            aria-label="Dismiss notification"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))
+                        ))}
+                        {notifications.length > 5 && (
+                          <div className="px-4 py-2 text-center">
+                            <a
+                              href="/notifications"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              View all {notifications.length} notifications
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -357,6 +382,20 @@ export default function Header() {
                   className={getMobileLinkStyles("/users")}
                 >
                   Users
+                </Link>
+                <Link
+                  href="/notifications"
+                  onClick={closeMobileMenu}
+                  className={getMobileLinkStyles("/notifications")}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </Link>
 
                 {/* User Info */}

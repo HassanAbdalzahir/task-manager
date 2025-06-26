@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface Notification {
   id: string;
@@ -7,15 +8,13 @@ interface Notification {
   message: string;
   duration?: number;
   isRead: boolean;
-  isPersistent?: boolean; // Won't auto-dismiss
+  isPersistent?: boolean;
   timestamp: Date;
 }
 
 interface NotificationState {
   notifications: Notification[];
-  addNotification: (
-    notification: Omit<Notification, "id" | "isRead" | "timestamp">
-  ) => void;
+  addNotification: (notification: Omit<Notification, "id" | "isRead" | "timestamp">) => void;
   removeNotification: (id: string) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
@@ -23,48 +22,56 @@ interface NotificationState {
   getUnreadCount: () => number;
 }
 
-export const useNotificationStore = create<NotificationState>((set, get) => ({
-  notifications: [],
+export const useNotificationStore = create<NotificationState>()(
+  persist(
+    (set, get) => ({
+      notifications: [],
 
-  addNotification: (notification) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newNotification = {
-      ...notification,
-      id,
-      isRead: false,
-      timestamp: new Date(),
-    };
+      addNotification: (notification) => {
+        const id = Math.random().toString(36).substr(2, 9);
+        const newNotification = {
+          ...notification,
+          id,
+          isRead: false,
+          timestamp: new Date(),
+        };
 
-    set((state) => ({
-      notifications: [...state.notifications, newNotification],
-    }));
-  },
+        set((state) => ({
+          notifications: [newNotification, ...state.notifications],
+        }));
+      },
 
-  removeNotification: (id) => {
-    set((state) => ({
-      notifications: state.notifications.filter((n) => n.id !== id),
-    }));
-  },
+      removeNotification: (id) => {
+        set((state) => ({
+          notifications: state.notifications.filter((n) => n.id !== id),
+        }));
+      },
 
-  markAsRead: (id) => {
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === id ? { ...n, isRead: true } : n
-      ),
-    }));
-  },
+      markAsRead: (id) => {
+        set((state) => ({
+          notifications: state.notifications.map((n) =>
+            n.id === id ? { ...n, isRead: true } : n
+          ),
+        }));
+      },
 
-  markAllAsRead: () => {
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
-    }));
-  },
+      markAllAsRead: () => {
+        set((state) => ({
+          notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+        }));
+      },
 
-  clearNotifications: () => {
-    set({ notifications: [] });
-  },
+      clearNotifications: () => {
+        set({ notifications: [] });
+      },
 
-  getUnreadCount: () => {
-    return get().notifications.filter((n) => !n.isRead).length;
-  },
-}));
+      getUnreadCount: () => {
+        return get().notifications.filter((n) => !n.isRead).length;
+      },
+    }),
+    {
+      name: "nanotask-notifications",
+      partialize: (state) => ({ notifications: state.notifications }),
+    }
+  )
+);
