@@ -1,40 +1,79 @@
-# MicroTwitter
+# Task Manager
 
-A lightweight social media platform inspired by Twitter, combining public posts with real-time messaging in a simple and modern interface.
+A powerful task management and employee collaboration platform designed to help organizations manage work, responsibilities, permissions, and communication in one place.
 
-## 🚀 About
+## Features
 
-**MicroTwitter** is a full-stack social media application that brings together the core concepts of Twitter and private messaging.
+### Task Management
+- Create, assign, update, and track tasks
+- Set priorities and deadlines
+- Manage task statuses and progress
+- Track completed, pending, active, and overdue tasks
 
-Users can create posts, interact with other users, and communicate through private messages — all within a single platform.
+### Task Assignment
+- Assign tasks to employees
+- Send tasks across different levels of the organization
+- Reassign tasks when needed
+- Track assigned and received tasks
 
-The project was built as a practical full-stack application to explore authentication, social interactions, messaging, APIs, and modern web application architecture.
+### Employee Management
+- Manage employees and their roles
+- Organize employees within the organization
+- View employee responsibilities and assigned tasks
+- Manage relationships between employees and managers
 
-## ✨ Features
+### Hierarchical Permissions
+- Role-based permission system
+- Multi-level organizational hierarchy
+- Different levels of access and authority
+- Control what employees can view, create, edit, assign, or manage
+- Permissions based on the user's position within the organization
 
-### 📝 Posts
-- Create and publish posts
-- Edit and delete your own posts
-- Like posts
-- View posts from other users
-- User profiles
-- Follow / unfollow users
+### Notifications
+- Notifications for newly assigned tasks
+- Task updates and changes
+- Reassignment notifications
+- Deadline notifications
+- Status and activity notifications
 
-### 💬 Messaging
-- Private conversations between users
-- Send and receive messages
-- Conversation history
-- Real-time messaging support
+### Organization Management
+- Create and manage organizational structures
+- Define management relationships
+- Organize employees into teams and departments
+- Manage responsibilities across different organizational levels
 
-### 👤 User System
-- User registration and authentication
-- Login / logout
-- Profile management
-- Profile picture and user information
-- Follow system
+### Task Tracking
+- Monitor task progress
+- Track task history and activity
+- View pending, active, completed, and overdue tasks
+- Keep track of task assignments and changes
 
-### 🔍 Social Features
-- Explore users and posts
-- User timelines
-- Personalized feed
-- Search users and posts
+### Dashboard
+- Overview of tasks and responsibilities
+- Employee activity overview
+- Important notifications and updates
+- Quick access to frequently used actions
+
+### Access Control
+- Restrict sensitive actions based on permissions
+- Control access to organizational data
+- Separate management and employee responsibilities
+- Ensure users only access information and actions available to their role
+
+## Purpose
+
+The goal of this application is to provide organizations with a centralized platform for managing employees, assigning responsibilities, controlling permissions, tracking work, and keeping everyone informed.
+
+The system is designed to support different organizational structures and can be adapted to teams and companies with multiple levels of management.
+
+## Future Improvements
+
+- Advanced reporting and analytics
+- More notification options
+- Calendar and scheduling
+- Task comments and discussions
+- File attachments
+- Activity logs
+- Advanced search and filtering
+- Team performance monitoring
+- Custom roles and permissions
